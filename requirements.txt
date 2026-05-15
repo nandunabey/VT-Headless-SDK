@@ -1,0 +1,5 @@
+openvr
+websockets>=16.0
+flask>=2.0
+paho-mqtt>=1.6
+numpy>=1.21
