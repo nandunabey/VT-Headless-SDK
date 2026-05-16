@@ -1,4 +1,8 @@
 @echo off
+REM Robotics WS:  ws://localhost:8765
+REM Robotics HTTP: http://localhost:8080
+REM Skeleton WS:  ws://localhost:8766
+REM Skeleton HTTP: http://localhost:8081
 title VUT Robotics SDK -- Stop
 color 0C
 

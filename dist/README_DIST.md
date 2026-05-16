@@ -1,7 +1,7 @@
 # VUT Robotics SDK — Standalone Tools
 
 **Version:** v0.1.0-alpha
-**Built by:** Nandun Abeynayake, Head of Product ANZ, HTC VIVE
+**Built by:** nandunabey — community project
 
 ---
 

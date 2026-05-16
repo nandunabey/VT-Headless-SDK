@@ -1,11 +1,15 @@
 @echo off
+REM Robotics WS:  ws://localhost:8765
+REM Robotics HTTP: http://localhost:8080
+REM Skeleton WS:  ws://localhost:8766
+REM Skeleton HTTP: http://localhost:8081
 title VUT Robotics SDK Launcher
 color 0B
 
 echo.
 echo  ================================================
 echo   VIVE Ultimate Tracker -- Headless Robotics SDK
-echo   PoC v0.1 -- HTC VIVE ANZ
+echo   PoC v0.1 -- community project
 echo  ================================================
 echo.
 
@@ -76,24 +80,40 @@ echo  Opening visualiser in Chrome...
 start chrome "http://localhost:8080/visualiser.html"
 echo  [OK] Browser opening visualiser...
 
+:: ── Start Skeleton server ─────────────────────────────────────────────────────
+
+echo  Starting Skeleton server on port 8081...
+start "VUT Skeleton Server" /MIN cmd /c "cd /d C:\Users\vive_\dev\vut-skeleton && python visualiser/server.py"
+echo  Waiting for skeleton server to initialise...
+timeout /t 3 /nobreak >nul
+echo  [OK] Skeleton server started on port 8081
+
+echo  Opening skeleton visualiser...
+start "" "http://localhost:8081/vut-skeleton/visualiser/index.html"
+echo  [OK] Skeleton visualiser opening...
+
 :: ── Status summary ───────────────────────────────────────────────────────────
 
 echo.
 echo  ================================================
 echo   VIVE Ultimate Tracker -- Headless Robotics SDK
-echo   PoC v0.1 -- HTC VIVE ANZ
+echo   PoC v0.1 -- community project
 echo  ================================================
 echo.
 echo  [OK] HTTP server     --  http://localhost:8080
 echo  [OK] WebSocket daemon -- ws://localhost:8765
 echo  [OK] Visualiser      --  http://localhost:8080/visualiser.html
+echo  [OK] Skeleton server  --  http://localhost:8081
+echo  [OK] Skeleton WS     --  ws://localhost:8766
+echo  [OK] Skeleton vis    --  http://localhost:8081/vut-skeleton/visualiser/index.html
 echo.
 echo  Tracker serials:
 echo    VUT-01: 47-A33F01412  ^(cyan^)
 echo    VUT-02: FA4383B00537  ^(amber^)
 echo.
-echo  Daemon window: "VUT Tracker Daemon"
-echo  HTTP window:   "VUT HTTP Server"
+echo  Daemon window:   "VUT Tracker Daemon"
+echo  HTTP window:     "VUT HTTP Server"
+echo  Skeleton window: "VUT Skeleton Server"
 echo.
 echo  ------------------------------------------------
 echo  Press any key to STOP all services and exit...

@@ -1,6 +1,6 @@
 """VUT Robotics SDK — Headless 6DoF spatial tracking for VIVE Ultimate Tracker.
 
-Built by Nandun Abeywickrama, Head of Product ANZ, HTC VIVE.
+Built by nandunabey — community project.
 
 Quickstart:
     from vut_sdk import VUTTracker
