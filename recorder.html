@@ -17,7 +17,7 @@
     --green:  #00e676;
     --red:    #ff5252;
     --text:   #ccddf0;
-    --muted:  #4a6a8a;
+    --muted:  #cccccc;
     --accent: #4a9eff;
     --font-mono: 'Share Tech Mono', monospace;
     --font-ui:   'Rajdhani', sans-serif;
@@ -113,7 +113,7 @@
   .section-title {
     font-family: var(--font-mono);
     font-size: 9px;
-    color: var(--accent);
+    color: #ffffff;
     letter-spacing: 3px;
     text-transform: uppercase;
     margin-bottom: 12px;
@@ -201,6 +201,7 @@
     font-size: 16px;
     color: var(--text);
     letter-spacing: 1px;
+    font-weight: 500;
   }
   .rec-stat-val.recording { color: var(--red); }
 
@@ -282,7 +283,7 @@
   .playback-title {
     font-family: var(--font-mono);
     font-size: 9px;
-    color: var(--accent);
+    color: #ffffff;
     letter-spacing: 3px;
     text-transform: uppercase;
   }
@@ -441,7 +442,7 @@
     letter-spacing: 1px;
   }
   .sb-item { display: flex; align-items: center; gap: 5px; }
-  .sb-val { color: var(--text); }
+  .sb-val { color: var(--text); font-weight: 500; }
   .sb-sep { flex: 1; }
   .sb-msg { color: var(--muted); font-style: normal; transition: color .3s; }
   .sb-msg.ok  { color: var(--green); }
