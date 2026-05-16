@@ -58,27 +58,29 @@ echo  [OK] Clean
 
 echo.
 
-:: ── Start HTTP server ────────────────────────────────────────────────────────
+:: ── Start daemon (WebSocket :8765 + HTTP :8080) ──────────────────────────────
 
-echo  Starting HTTP server on port 8080...
-start "VUT HTTP Server" /MIN cmd /c "cd /d C:\Users\vive_\Desktop && python -m http.server 8080"
-timeout /t 2 /nobreak >nul
-echo  [OK] HTTP server started on port 8080
-
-:: ── Start WebSocket daemon ───────────────────────────────────────────────────
-
-echo  Starting WebSocket daemon on port 8765...
-start "VUT Tracker Daemon" cmd /c "cd /d C:\Users\vive_\Desktop && python vtrackerd_openvr.py"
+echo  Starting tracker daemon (ws://localhost:8765 + http://localhost:8080)...
+start "VUT Tracker Daemon" cmd /c "cd /d C:\Users\vive_\dev\vut-sdk && python vtrackerd_openvr.py --fps 60"
 
 echo  Waiting for daemon to initialise...
 timeout /t 3 /nobreak >nul
-echo  [OK] WebSocket daemon started on port 8765
+echo  [OK] Daemon started -- ws://localhost:8765 + http://localhost:8080
 
 :: ── Open browser ────────────────────────────────────────────────────────────
 
 echo  Opening visualiser in Chrome...
 start chrome "http://localhost:8080/visualiser.html"
 echo  [OK] Browser opening visualiser...
+
+REM Open setup on first run only
+IF NOT EXIST "%~dp0tracker_roles.json" (
+    echo [--] No tracker_roles.json found -- opening setup...
+    timeout /t 1 /nobreak > nul
+    start "" "http://localhost:8080/setup.html"
+) ELSE (
+    echo [OK] tracker_roles.json found -- skipping setup
+)
 
 :: ── Start Skeleton server ─────────────────────────────────────────────────────
 
@@ -100,9 +102,9 @@ echo   VIVE Ultimate Tracker -- Headless Robotics SDK
 echo   PoC v0.1 -- community project
 echo  ================================================
 echo.
-echo  [OK] HTTP server     --  http://localhost:8080
-echo  [OK] WebSocket daemon -- ws://localhost:8765
+echo  [OK] Tracker daemon  --  ws://localhost:8765 + http://localhost:8080
 echo  [OK] Visualiser      --  http://localhost:8080/visualiser.html
+echo  [OK] Setup page      --  http://localhost:8080/setup.html
 echo  [OK] Skeleton server  --  http://localhost:8081
 echo  [OK] Skeleton WS     --  ws://localhost:8766
 echo  [OK] Skeleton vis    --  http://localhost:8081/vut-skeleton/visualiser/index.html
@@ -112,7 +114,6 @@ echo    VUT-01: 47-A33F01412  ^(cyan^)
 echo    VUT-02: FA4383B00537  ^(amber^)
 echo.
 echo  Daemon window:   "VUT Tracker Daemon"
-echo  HTTP window:     "VUT HTTP Server"
 echo  Skeleton window: "VUT Skeleton Server"
 echo.
 echo  ------------------------------------------------

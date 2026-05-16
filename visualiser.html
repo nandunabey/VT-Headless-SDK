@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIVE Tracker — Headless Robotics SDK</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;500;700&display=swap');
+
+  :root {
+    --bg:     #070c12;
+    --panel:  #0a0d10;
+    --border: #1a2332;
+    --cyan:   #00e5ff;
+    --amber:  #ffb300;
+    --green:  #00e676;
+    --red:    #ff5252;
+    --text:   #ccddf0;
+    --muted:  #4a6a8a;
+    --accent: #4a9eff;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-ui:   'Rajdhani', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    height: 100vh;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: 46px 1fr;
+    grid-template-columns: 272px 1fr;
+  }
+
+  /* ── Header ── */
+  header {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    gap: 0;
+  }
+
+  .h-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .h-title em { color: var(--accent); font-style: normal; }
+
+  /* ── Tabs ── */
+  .h-tabs {
+    display: flex;
+    align-items: stretch;
+    margin: 0 16px;
+    gap: 0;
+  }
+  .h-tab {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0 14px;
+    height: 46px;
+    transition: color .2s, border-color .2s;
+    white-space: nowrap;
+  }
+  .h-tab:hover  { color: var(--text); }
+  .h-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .h-sep { flex: 1; }
+
+  #h-view-mode {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .conn-status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .conn-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background .3s, box-shadow .3s;
+  }
+  .conn-dot.live          { background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 2s infinite; }
+  .conn-dot.reconnecting  { background: var(--amber); animation: blink .5s infinite; }
+  .conn-dot.disconnected  { background: var(--red); }
+  .conn-dot.waiting       { background: var(--muted); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+  #conn-text { transition: color .3s; }
+  .conn-url { color: var(--muted); font-size: 9px; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    grid-column: 1;
+    grid-row: 2;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Global stats */
+  .global-stats {
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: rgba(74,158,255,.03);
+  }
+  .gs-header {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 7px;
+    text-transform: uppercase;
+  }
+  .gs-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.9;
+  }
+  .gs-val { color: var(--text); }
+
+  /* Tracker card */
+  .tracker-card {
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 9px 10px;
+    transition: opacity .3s, border-color .3s;
+  }
+  .tracker-card.tracking { border-color: #1a2e1a; }
+  .tracker-card.lost     { opacity: .55; }
+
+  .tc-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 6px;
+  }
+  .tc-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tc-name {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text);
+    flex: 1;
+    letter-spacing: 1px;
+  }
+  .tc-badge {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    padding: 2px 5px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .badge-tracking { background: rgba(0,230,118,.12); border: 1px solid var(--green); color: var(--green); }
+  .badge-lost     { background: rgba(255,82,82,.12);  border: 1px solid var(--red);   color: var(--red); }
+
+  .tc-serial {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    margin-bottom: 7px;
+    letter-spacing: .5px;
+  }
+
+  .tc-grid3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+    margin-bottom: 5px;
+  }
+  .tc-cell { text-align: center; }
+  .tc-cell-label {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: var(--muted);
+    margin-bottom: 1px;
+    text-transform: uppercase;
+  }
+  .tc-cell-val {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+  }
+
+  .tc-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 5px;
+  }
+  .tc-fps {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+  }
+  .stab-bar {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+  }
+  .stab-seg {
+    width: 6px;
+    border-radius: 1px;
+    background: var(--border);
+    transition: background .3s, height .3s;
+  }
+
+  /* Battery indicator */
+  .tc-battery {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .batt-pct {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    min-width: 26px;
+    text-align: right;
+    transition: color .5s;
+  }
+  .batt-body {
+    width: 18px;
+    height: 8px;
+    border: 1px solid var(--muted);
+    border-radius: 1px;
+    position: relative;
+    overflow: hidden;
+  }
+  .batt-nub {
+    width: 2px;
+    height: 5px;
+    background: var(--muted);
+    border-radius: 0 1px 1px 0;
+    flex-shrink: 0;
+  }
+  .batt-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    transition: width .6s, background .6s;
+  }
+
+  /* ── Robotics viewport ── */
+  #viewport {
+    grid-column: 2;
+    grid-row: 2;
+    position: relative;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  #main-canvas {
+    display: block;
+    cursor: grab;
+  }
+  #main-canvas:active { cursor: grabbing; }
+
+  .vp-mode-label {
+    position: absolute;
+    top: 12px; left: 12px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .kbd-hints {
+    position: absolute;
+    bottom: 14px; right: 14px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    line-height: 1.9;
+    text-align: right;
+    pointer-events: none;
+    user-select: none;
+  }
+  .kbd-hints kbd {
+    display: inline-block;
+    background: #0d1520;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 0 3px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text);
+  }
+  a.setup-link {
+    display: block;
+    margin-top: 6px;
+    border-top: 1px solid var(--border);
+    padding-top: 6px;
+    color: #1e3a4a;
+    text-decoration: none;
+    letter-spacing: 1px;
+    pointer-events: all;
+    user-select: none;
+    transition: color .2s;
+  }
+  a.setup-link:hover { color: var(--cyan); }
+
+  #connect-prompt {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(7,12,18,.88);
+    z-index: 20;
+    gap: 10px;
+  }
+  .cp-title  { font-family: var(--font-mono); font-size: 12px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; }
+  .cp-detail { font-family: var(--font-mono); font-size: 10px; color: var(--muted); opacity: .6; }
+  .spinner {
+    width: 26px; height: 26px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Body viewport ── */
+  #body-viewport {
+    grid-column: 2;
+    grid-row: 2;
+    display: none;
+    flex-direction: row;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  .body-panel {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .body-panel canvas {
+    display: block;
+    cursor: grab;
+  }
+  .body-panel canvas:active { cursor: grabbing; }
+
+  .panel-divider {
+    width: 1px;
+    background: #1e2a38;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="h-title">VIVE <em>TRACKER</em> — HEADLESS ROBOTICS SDK</div>
+  <div class="h-tabs">
+    <button class="h-tab active" id="tab-robotics" onclick="switchTab('robotics')">ROBOTICS</button>
+    <button class="h-tab"        id="tab-body"     onclick="switchTab('body')">BODY</button>
+  </div>
+  <div class="h-sep"></div>
+  <div id="h-view-mode">TOP-DOWN · XZ</div>
+  <div class="h-sep"></div>
+  <div class="conn-status">
+    <div class="conn-dot waiting" id="conn-dot"></div>
+    <span id="conn-text" style="color:var(--muted)">WAITING</span>
+    <span class="conn-url">ws://localhost:8765</span>
+  </div>
+</header>
+
+<!-- ── Sidebar (shared by both modes) ── -->
+<div class="sidebar">
+
+  <!-- Stream stats — always visible -->
+  <div class="global-stats">
+    <div class="gs-header">Stream</div>
+    <div class="gs-row"><span>pose_multi</span><span class="gs-val" id="gs-fps">— fps</span></div>
+    <div class="gs-row"><span>frame</span><span class="gs-val" id="gs-frame">—</span></div>
+    <div class="gs-row"><span>active</span><span class="gs-val" id="gs-active">0 trackers</span></div>
+  </div>
+
+  <div id="tracker-cards"></div>
+</div>
+
+<!-- ── Robotics viewport ── -->
+<div id="viewport">
+  <canvas id="main-canvas"></canvas>
+  <div class="vp-mode-label" id="vp-label">TOP-DOWN XZ</div>
+  <div class="kbd-hints">
+    <div><kbd>T</kbd> trails &nbsp;<kbd>G</kbd> grid &nbsp;<kbd>D</kbd> distances &nbsp;<kbd>H</kbd> height</div>
+    <div><kbd>V</kbd> side view &nbsp;<kbd>R</kbd> reset &nbsp;<kbd>+</kbd> <kbd>-</kbd> zoom</div>
+    <div><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> pan</div>
+    <a href="http://localhost:8080/setup.html" class="setup-link">⚙ Reassign Trackers</a>
+  </div>
+  <div id="connect-prompt">
+    <div class="spinner"></div>
+    <div class="cp-title">Connecting to daemon</div>
+    <div class="cp-detail">ws://localhost:8765</div>
+    <div class="cp-detail" id="retry-count"></div>
+  </div>
+</div>
+
+<!-- ── Body viewport (split XZ + XY) ── -->
+<div id="body-viewport">
+  <div class="body-panel" id="body-panel-xz">
+    <canvas id="canvas-xz"></canvas>
+    <div class="vp-mode-label">TOP-DOWN · XZ</div>
+    <div class="kbd-hints">
+      <div><kbd>T</kbd> trails &nbsp;<kbd>G</kbd> grid &nbsp;<kbd>R</kbd> reset</div>
+      <div><kbd>+</kbd> <kbd>-</kbd> zoom &nbsp; <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> pan</div>
+    </div>
+  </div>
+  <div class="panel-divider"></div>
+  <div class="body-panel" id="body-panel-xy">
+    <canvas id="canvas-xy"></canvas>
+    <div class="vp-mode-label">FRONT · XY</div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// BODY MODE CONFIG — edit to reconfigure connectors (slot indices)
+// Hub 0→all plus sequential chain 1→2→3→4
+// ═══════════════════════════════════════════════════════════════════════════════
+const BODY_CONNECTORS = [
+  [0,1],[0,2],[0,3],[0,4],
+  [1,2],[2,3],[3,4]
+];
+
+const BODY_TRAIL_MAX = 100;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SHARED — tracker registry, math helpers
+// ═══════════════════════════════════════════════════════════════════════════════
+const SLOT_COLORS = ['#00e5ff', '#ffb300', '#00e676', '#ff5252'];
+const TRAIL_MAX   = 200;
+const TRACKER_R   = 12;
+const TICK_LEN    = 20;
+
+const trackers  = new Map();
+let   slotIndex = 0;
+
+function getOrCreate(serial) {
+  if (trackers.has(serial)) return trackers.get(serial);
+  const slot  = slotIndex++;
+  const color = SLOT_COLORS[slot] || '#ffffff';
+  const name  = 'VUT-' + String(slot + 1).padStart(2, '0');
+  const state = {
+    serial, slot, color, name,
+    pos: { x: 0, y: 0, z: 0 },
+    rot: { w: 1, x: 0, y: 0, z: 0 },
+    status: 'waiting',
+    batteryPct: null,
+    trail: [],
+    fps: 0, localFrame: 0,
+    fpsCounter: 0, lastFpsStamp: Date.now(),
+  };
+  trackers.set(serial, state);
+  buildCard(state);
+  return state;
+}
+
+function getTrkBySlot(slot) {
+  for (const trk of trackers.values()) if (trk.slot === slot) return trk;
+  return null;
+}
+
+// ── Math helpers ──────────────────────────────────────────────────────────────
+function quatToEuler(w, x, y, z) {
+  const sinr_cosp = 2 * (w*x + y*z);
+  const cosr_cosp = 1 - 2*(x*x + y*y);
+  const roll  = Math.atan2(sinr_cosp, cosr_cosp) * 180 / Math.PI;
+  const sinp  = 2 * (w*y - z*x);
+  const pitch = (Math.abs(sinp) >= 1 ? Math.sign(sinp)*90 : Math.asin(sinp)*180/Math.PI);
+  const siny_cosp = 2*(w*z + x*y);
+  const cosy_cosp = 1 - 2*(y*y + z*z);
+  const yaw = Math.atan2(siny_cosp, cosy_cosp) * 180 / Math.PI;
+  return { roll, pitch, yaw };
+}
+
+function quatToYawRad(w, x, y, z) {
+  return Math.atan2(2*(w*y - x*z), 1 - 2*(y*y + x*x));
+}
+
+function hexAlpha(hex, a) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function connColor(c1, c2) {
+  const r = Math.round((parseInt(c1.slice(1,3),16) + parseInt(c2.slice(1,3),16)) / 2);
+  const g = Math.round((parseInt(c1.slice(3,5),16) + parseInt(c2.slice(3,5),16)) / 2);
+  const b = Math.round((parseInt(c1.slice(5,7),16) + parseInt(c2.slice(5,7),16)) / 2);
+  return `rgba(${r},${g},${b},0.6)`;
+}
+
+function dist3(a, b) {
+  const dx = a.x-b.x, dy = a.y-b.y, dz = a.z-b.z;
+  return Math.sqrt(dx*dx + dy*dy + dz*dz);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SIDEBAR DOM
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildCard(trk) {
+  const el = document.createElement('div');
+  el.className = 'tracker-card';
+  el.id = 'card-' + trk.serial;
+
+  const dot = `<div class="tc-dot" style="background:${trk.color};box-shadow:0 0 5px ${trk.color}"></div>`;
+
+  const posRow = ['X','Y','Z'].map(ax => `
+    <div class="tc-cell">
+      <div class="tc-cell-label">${ax}</div>
+      <div class="tc-cell-val" id="p${ax.toLowerCase()}-${trk.serial}">—</div>
+    </div>`).join('');
+
+  const rotRow = ['Roll','Pitch','Yaw'].map(r => `
+    <div class="tc-cell">
+      <div class="tc-cell-label">${r}</div>
+      <div class="tc-cell-val" id="r${r.toLowerCase().slice(0,2)}-${trk.serial}">—</div>
+    </div>`).join('');
+
+  const segs = [0,1,2,3,4].map(i =>
+    `<div class="stab-seg" id="seg-${trk.serial}-${i}" style="height:${6+i*3}px"></div>`
+  ).join('');
+
+  el.innerHTML = `
+    <div class="tc-header">
+      ${dot}
+      <div class="tc-name">${trk.name}</div>
+      <div class="tc-badge badge-lost" id="badge-${trk.serial}">LOST</div>
+    </div>
+    <div class="tc-serial">Serial: ${trk.serial}</div>
+    <div class="tc-grid3">${posRow}</div>
+    <div class="tc-grid3">${rotRow}</div>
+    <div class="tc-footer">
+      <div class="tc-fps" id="fps-${trk.serial}">0 fps · frame 0</div>
+      <div class="tc-battery">
+        <span class="batt-pct" id="batt-pct-${trk.serial}">—%</span>
+        <div style="display:flex;align-items:center;gap:0">
+          <div class="batt-body"><div class="batt-fill" id="batt-fill-${trk.serial}"></div></div>
+          <div class="batt-nub"></div>
+        </div>
+      </div>
+      <div class="stab-bar">${segs}</div>
+    </div>`;
+
+  document.getElementById('tracker-cards').appendChild(el);
+}
+
+function updateCard(trk) {
+  const { x, y, z } = trk.pos;
+  const { roll, pitch, yaw } = quatToEuler(trk.rot.w, trk.rot.x, trk.rot.y, trk.rot.z);
+  const tracking = trk.status === 'tracking';
+
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+
+  const badge = document.getElementById('badge-' + trk.serial);
+  if (badge) {
+    badge.textContent = tracking ? 'TRACKING' : (trk.status || 'LOST').toUpperCase();
+    badge.className   = 'tc-badge ' + (tracking ? 'badge-tracking' : 'badge-lost');
+  }
+  const card = document.getElementById('card-' + trk.serial);
+  if (card) card.className = 'tracker-card ' + (tracking ? 'tracking' : 'lost');
+
+  const fmt  = v => (v >= 0 ? '+' : '') + v.toFixed(3) + 'm';
+  const fmtd = v => v.toFixed(1) + '°';
+
+  set('px-' + trk.serial,  fmt(x));
+  set('py-' + trk.serial,  fmt(y));
+  set('pz-' + trk.serial,  fmt(z));
+  set('rro-' + trk.serial, fmtd(roll));
+  set('rpi-' + trk.serial, fmtd(pitch));
+  set('rya-' + trk.serial, fmtd(yaw));
+  set('fps-' + trk.serial, `${trk.fps} fps · frame ${trk.localFrame}`);
+
+  let bars, barColor;
+  const f = trk.fps;
+  if      (f <  20) { bars = 1; barColor = '#ff5252'; }
+  else if (f <  40) { bars = 2; barColor = '#ffb300'; }
+  else if (f <  60) { bars = 3; barColor = '#ffb300'; }
+  else if (f <  80) { bars = 4; barColor = '#00e676'; }
+  else              { bars = 5; barColor = '#00e676'; }
+
+  for (let i = 0; i < 5; i++) {
+    const seg = document.getElementById(`seg-${trk.serial}-${i}`);
+    if (seg) seg.style.background = i < bars ? barColor : 'var(--border)';
+  }
+
+  const batt        = trk.batteryPct;
+  const battPctEl   = document.getElementById('batt-pct-'  + trk.serial);
+  const battFillEl  = document.getElementById('batt-fill-' + trk.serial);
+  if (battPctEl || battFillEl) {
+    let battColor;
+    if (batt === null || batt === undefined)  battColor = 'var(--muted)';
+    else if (batt > 60)                       battColor = '#00e676';
+    else if (batt >= 30)                      battColor = '#ffb300';
+    else                                      battColor = '#ff5252';
+    if (battPctEl) {
+      battPctEl.textContent = (batt !== null && batt !== undefined) ? batt + '%' : '—%';
+      battPctEl.style.color = battColor;
+    }
+    if (battFillEl) {
+      battFillEl.style.width      = (batt !== null && batt !== undefined) ? batt + '%' : '0%';
+      battFillEl.style.background = battColor;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TAB SWITCHING — single render loop, no duplicate RAF callbacks
+// ═══════════════════════════════════════════════════════════════════════════════
+let activeTab   = localStorage.getItem('vut-tab') || 'robotics';
+let currentMode = activeTab;
+let rafId       = null;
+
+function startLoop() {
+  if (rafId !== null) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(renderLoop);
+}
+
+function switchTab(tab) {
+  activeTab   = tab;
+  currentMode = tab;
+  localStorage.setItem('vut-tab', tab);
+
+  document.getElementById('tab-robotics').classList.toggle('active', tab === 'robotics');
+  document.getElementById('tab-body').classList.toggle('active', tab === 'body');
+
+  document.getElementById('viewport').style.display      = tab === 'robotics' ? '' : 'none';
+  document.getElementById('body-viewport').style.display = tab === 'body' ? 'flex' : 'none';
+
+  document.getElementById('h-view-mode').textContent =
+    tab === 'body' ? 'BODY TRACKING' :
+    (viewMode === 'xz' ? 'TOP-DOWN · XZ' : 'SIDE VIEW · XY');
+
+  if (tab === 'body') resizeBodyPanels();
+  startLoop();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROBOTICS MODE — view state, canvas, transforms, drawing
+// ═══════════════════════════════════════════════════════════════════════════════
+let viewMode   = 'xz';
+let showTrails = true;
+let showGrid   = true;
+let showDist   = true;
+let showHeight = true;
+let zoom       = 120;
+let panX       = 0;
+let panV       = 0;
+
+const canvas = document.getElementById('main-canvas');
+const ctx    = canvas.getContext('2d');
+const vpEl   = document.getElementById('viewport');
+let W = 0, H = 0;
+
+function resize() {
+  const w = vpEl.clientWidth, h = vpEl.clientHeight;
+  if (!w || !h) return;
+  W = w; H = h;
+  canvas.width  = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+}
+resize();
+new ResizeObserver(resize).observe(vpEl);
+
+function w2c(wx, wv) {
+  const dpr = devicePixelRatio;
+  const cx  = canvas.width  / 2;
+  const cy  = canvas.height / 2;
+  return [
+    cx + (wx - panX) * zoom * dpr,
+    cy - (wv - panV) * zoom * dpr,
+  ];
+}
+
+function c2w(cx, cy) {
+  const dpr = devicePixelRatio;
+  const ox  = canvas.width  / 2;
+  const oy  = canvas.height / 2;
+  return [
+    (cx - ox) / (zoom * dpr) + panX,
+    -(cy - oy) / (zoom * dpr) + panV,
+  ];
+}
+
+function trackerScreen(trk) {
+  if (viewMode === 'xz') return w2c(trk.pos.x, trk.pos.z);
+  return w2c(trk.pos.x, trk.pos.y);
+}
+
+function trailPoint(pt) {
+  if (viewMode === 'xz') return w2c(pt.x, pt.z);
+  return w2c(pt.x, pt.y);
+}
+
+function drawGrid() {
+  if (!showGrid) return;
+  const dpr = devicePixelRatio;
+  const cw  = canvas.width, ch = canvas.height;
+
+  const [wx0, wv0] = c2w(0,   0);
+  const [wx1, wv1] = c2w(cw, ch);
+
+  const xMin = Math.floor(Math.min(wx0, wx1) / .25) * .25;
+  const xMax = Math.ceil (Math.max(wx0, wx1) / .25) * .25;
+  const vMin = Math.floor(Math.min(wv0, wv1) / .25) * .25;
+  const vMax = Math.ceil (Math.max(wv0, wv1) / .25) * .25;
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#0d1a26';
+  ctx.lineWidth   = 1;
+  for (let x = xMin; x <= xMax + .001; x += .25) {
+    if (Math.abs(x % 1) < .001) continue;
+    const [sx] = w2c(x, 0); ctx.moveTo(sx, 0); ctx.lineTo(sx, ch);
+  }
+  for (let v = vMin; v <= vMax + .001; v += .25) {
+    if (Math.abs(v % 1) < .001) continue;
+    const [, sy] = w2c(0, v); ctx.moveTo(0, sy); ctx.lineTo(cw, sy);
+  }
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#102030';
+  ctx.lineWidth   = 1;
+  for (let x = Math.floor(xMin); x <= Math.ceil(xMax); x++) {
+    const [sx] = w2c(x, 0); ctx.moveTo(sx, 0); ctx.lineTo(sx, ch);
+  }
+  for (let v = Math.floor(vMin); v <= Math.ceil(vMax); v++) {
+    const [, sy] = w2c(0, v); ctx.moveTo(0, sy); ctx.lineTo(cw, sy);
+  }
+  ctx.stroke();
+
+  const [ox, oy] = w2c(0, 0);
+  ctx.strokeStyle = 'rgba(80,0,20,.5)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(cw, oy); ctx.stroke();
+  ctx.strokeStyle = 'rgba(0,20,60,.5)';
+  ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, ch); ctx.stroke();
+
+  ctx.font      = `${10 * dpr}px 'Share Tech Mono', monospace`;
+  ctx.fillStyle = '#4a6a8a';
+  ctx.textAlign = 'center';
+  ctx.fillText('+X', cw - 22*dpr, oy - 6*dpr);
+  ctx.fillText('-X',     22*dpr, oy - 6*dpr);
+  const vLabel = viewMode === 'xz' ? ['+Z', '-Z'] : ['+Y', '-Y'];
+  ctx.textAlign = 'left';
+  ctx.fillText(vLabel[0], ox + 5*dpr, 14*dpr);
+  ctx.fillText(vLabel[1], ox + 5*dpr, ch - 5*dpr);
+
+  ctx.fillStyle = '#4a9eff';
+  ctx.beginPath(); ctx.arc(ox, oy, 3*dpr, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#4a6a8a';
+  ctx.font      = `${9*dpr}px 'Share Tech Mono', monospace`;
+  ctx.textAlign = 'left';
+  ctx.fillText('origin', ox + 5*dpr, oy - 4*dpr);
+
+  const sbPx = zoom * dpr;
+  const sbX  = 16*dpr, sbY = ch - 18*dpr;
+  ctx.strokeStyle = '#4a9eff'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(sbX, sbY); ctx.lineTo(sbX + sbPx, sbY);
+  ctx.moveTo(sbX, sbY - 4*dpr); ctx.lineTo(sbX, sbY + 4*dpr);
+  ctx.moveTo(sbX + sbPx, sbY - 4*dpr); ctx.lineTo(sbX + sbPx, sbY + 4*dpr);
+  ctx.stroke();
+  ctx.fillStyle = '#4a9eff';
+  ctx.font      = `${9*dpr}px 'Share Tech Mono', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('1.0 m', sbX + sbPx/2, sbY - 7*dpr);
+}
+
+function drawTrails() {
+  if (!showTrails) return;
+  const dpr = devicePixelRatio;
+  for (const trk of trackers.values()) {
+    const pts = trk.trail;
+    if (pts.length < 2) continue;
+    const n = pts.length;
+    for (let i = 1; i < n; i++) {
+      const alpha = i / n;
+      const [x0, y0] = trailPoint(pts[i-1]);
+      const [x1, y1] = trailPoint(pts[i]);
+      ctx.strokeStyle = hexAlpha(trk.color, alpha * 0.85);
+      ctx.lineWidth   = 1.5 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawDistances() {
+  if (!showDist) return;
+  const dpr    = devicePixelRatio;
+  const active = [...trackers.values()].filter(t => t.status === 'tracking');
+  for (let i = 0; i < active.length; i++) {
+    for (let j = i + 1; j < active.length; j++) {
+      const a = active[i], b = active[j];
+      const [ax, ay] = trackerScreen(a);
+      const [bx, by] = trackerScreen(b);
+      const d = dist3(a.pos, b.pos);
+      ctx.strokeStyle = 'rgba(220,230,255,.28)';
+      ctx.lineWidth   = 1 * dpr;
+      ctx.setLineDash([4*dpr, 4*dpr]);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(200,220,255,.75)';
+      ctx.font      = `${9*dpr}px 'Share Tech Mono', monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(d.toFixed(3) + ' m', (ax+bx)/2, (ay+by)/2 - 7*dpr);
+    }
+  }
+}
+
+function drawTrackers() {
+  const dpr = devicePixelRatio;
+  const r   = TRACKER_R * dpr;
+  const tl  = TICK_LEN  * dpr;
+
+  for (const trk of trackers.values()) {
+    const [sx, sy] = trackerScreen(trk);
+    const { color } = trk;
+    const tracking  = trk.status === 'tracking';
+    const alpha     = tracking ? 1 : 0.35;
+
+    const grd = ctx.createRadialGradient(sx, sy, r*.5, sx, sy, r*1.9);
+    grd.addColorStop(0, hexAlpha(color, .18 * alpha));
+    grd.addColorStop(1, hexAlpha(color, 0));
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(sx, sy, r*1.9, 0, Math.PI*2); ctx.fill();
+
+    ctx.fillStyle   = hexAlpha(color, .88 * alpha);
+    ctx.strokeStyle = hexAlpha(color, alpha);
+    ctx.lineWidth   = 1.5 * dpr;
+    ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+
+    if (viewMode === 'xz') {
+      const yaw = quatToYawRad(trk.rot.w, trk.rot.x, trk.rot.y, trk.rot.z);
+      const tdx =  Math.sin(yaw) * tl;
+      const tdy = -Math.cos(yaw) * tl;
+      ctx.strokeStyle = hexAlpha(color, alpha);
+      ctx.lineWidth   = 2 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + tdx, sy + tdy);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = hexAlpha(color, alpha);
+    ctx.font      = `bold ${10*dpr}px 'Share Tech Mono', monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(trk.name, sx, sy - r - 6*dpr);
+
+    ctx.fillStyle = hexAlpha('#8aaabb', .7 * alpha);
+    ctx.font      = `${9*dpr}px 'Share Tech Mono', monospace`;
+    const ySign   = trk.pos.y >= 0 ? '+' : '';
+    ctx.fillText(ySign + trk.pos.y.toFixed(2) + 'm', sx, sy + r + 13*dpr);
+
+    if (showHeight && viewMode === 'xz') {
+      ctx.strokeStyle = hexAlpha(color, .22 * alpha);
+      ctx.lineWidth   = 1 * dpr;
+      ctx.setLineDash([2*dpr, 3*dpr]);
+      const barH = trk.pos.y * 30 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(sx + r + 4*dpr, sy);
+      ctx.lineTo(sx + r + 4*dpr, sy - barH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+}
+
+let firstPose = true;
+
+function fitView() {
+  const active = [...trackers.values()].filter(t => t.status === 'tracking');
+  const pad = 1.5;
+  let minX = -1, maxX = 1, minZ = -1, maxZ = 1;
+
+  if (active.length > 0) {
+    minX = Infinity; maxX = -Infinity; minZ = Infinity; maxZ = -Infinity;
+    for (const t of active) {
+      minX = Math.min(minX, t.pos.x); maxX = Math.max(maxX, t.pos.x);
+      minZ = Math.min(minZ, t.pos.z); maxZ = Math.max(maxZ, t.pos.z);
+    }
+  }
+
+  const ctrX = (minX + maxX) / 2;
+  const ctrZ = (minZ + maxZ) / 2;
+  const rngX = Math.max(maxX - minX + pad * 2, 2);
+  const rngZ = Math.max(maxZ - minZ + pad * 2, 2);
+
+  const rvw = Math.max(vpEl.clientWidth,  window.innerWidth  - 272, 1);
+  const rvh = Math.max(vpEl.clientHeight, window.innerHeight - 46,  1);
+  const bvw = Math.max(bPanelXZ.clientWidth,  (window.innerWidth - 272) / 2, 1);
+  const bvh = Math.max(bPanelXZ.clientHeight, window.innerHeight - 46,       1);
+
+  panX = ctrX; panV = ctrZ;
+  zoom = Math.max(80, Math.min(200, Math.min(rvw / rngX, rvh / rngZ)));
+
+  bPanX = ctrX; bPanV = ctrZ;
+  bZoom = Math.max(80, Math.min(200, Math.min(bvw / rngX, bvh / rngZ)));
+}
+
+function renderLoop() {
+  if (currentMode === 'robotics') {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawGrid();
+    drawTrails();
+    drawDistances();
+    drawTrackers();
+  } else {
+    drawBodyPanel(ctxXZ, canvasXZ, 'xz');
+    drawBodyPanel(ctxXY, canvasXY, 'xy');
+  }
+  rafId = requestAnimationFrame(renderLoop);
+}
+
+let dragging  = false;
+let lastMouse = { x: 0, y: 0 };
+
+canvas.addEventListener('mousedown', e => {
+  dragging  = true;
+  lastMouse = { x: e.clientX, y: e.clientY };
+});
+window.addEventListener('mouseup', () => { dragging = false; });
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  panX -= (e.clientX - lastMouse.x) / zoom;
+  panV += (e.clientY - lastMouse.y) / zoom;
+  lastMouse = { x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('wheel', e => {
+  zoom = Math.max(10, Math.min(600, zoom * (e.deltaY > 0 ? 0.9 : 1.1)));
+  e.preventDefault();
+}, { passive: false });
+
+window.addEventListener('keydown', e => {
+  if (activeTab !== 'robotics') return;
+  const PAN = 0.15;
+  switch (e.key) {
+    case 'T': case 't': showTrails = !showTrails; break;
+    case 'G': case 'g': showGrid   = !showGrid;   break;
+    case 'D': case 'd': showDist   = !showDist;   break;
+    case 'H': case 'h': showHeight = !showHeight;  break;
+    case 'V': case 'v':
+      viewMode = viewMode === 'xz' ? 'xy' : 'xz';
+      panX = 0; panV = 0;
+      const label = viewMode === 'xz' ? 'TOP-DOWN XZ' : 'SIDE VIEW XY';
+      document.getElementById('vp-label').textContent   = label;
+      document.getElementById('h-view-mode').textContent = viewMode === 'xz' ? 'TOP-DOWN · XZ' : 'SIDE VIEW · XY';
+      break;
+    case 'R': case 'r': fitView(); break;
+    case '+': case '=': zoom = Math.min(600, zoom * 1.2); break;
+    case '-': case '_': zoom = Math.max(10,  zoom * 0.8); break;
+    case 'ArrowLeft':   panX -= PAN; e.preventDefault(); break;
+    case 'ArrowRight':  panX += PAN; e.preventDefault(); break;
+    case 'ArrowUp':     panV += PAN; e.preventDefault(); break;
+    case 'ArrowDown':   panV -= PAN; e.preventDefault(); break;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BODY MODE — canvases, state, transforms, drawing
+// ═══════════════════════════════════════════════════════════════════════════════
+const canvasXZ  = document.getElementById('canvas-xz');
+const ctxXZ     = canvasXZ.getContext('2d');
+const canvasXY  = document.getElementById('canvas-xy');
+const ctxXY     = canvasXY.getContext('2d');
+const bPanelXZ  = document.getElementById('body-panel-xz');
+const bPanelXY  = document.getElementById('body-panel-xy');
+
+let bShowTrails = true;
+let bShowGrid   = true;
+let bZoom       = 120;
+let bPanX       = 0;
+let bPanV       = 0;
+
+function resizeBodyPanels() {
+  for (const [cvs, panel] of [[canvasXZ, bPanelXZ], [canvasXY, bPanelXY]]) {
+    const w = panel.clientWidth, h = panel.clientHeight;
+    if (!w || !h) continue;
+    cvs.width        = w * devicePixelRatio;
+    cvs.height       = h * devicePixelRatio;
+    cvs.style.width  = w + 'px';
+    cvs.style.height = h + 'px';
+  }
+}
+new ResizeObserver(() => { if (activeTab === 'body') resizeBodyPanels(); })
+  .observe(document.getElementById('body-viewport'));
+
+function bW2C(cvs, wx, wv) {
+  const dpr = devicePixelRatio;
+  return [
+    cvs.width/2  + (wx - bPanX) * bZoom * dpr,
+    cvs.height/2 - (wv - bPanV) * bZoom * dpr,
+  ];
+}
+
+function bC2W(cvs, px, py) {
+  const dpr = devicePixelRatio;
+  return [
+    (px - cvs.width/2)  / (bZoom * dpr) + bPanX,
+    -(py - cvs.height/2) / (bZoom * dpr) + bPanV,
+  ];
+}
+
+function bTrkPt(cvs, trk, bmode) {
+  return bW2C(cvs, trk.pos.x, bmode === 'xz' ? trk.pos.z : trk.pos.y);
+}
+
+function bTrailPt(cvs, pt, bmode) {
+  return bW2C(cvs, pt.x, bmode === 'xz' ? pt.z : pt.y);
+}
+
+function drawBodyGrid(cx, cvs, bmode) {
+  if (!bShowGrid) return;
+  const dpr = devicePixelRatio;
+  const cw = cvs.width, ch = cvs.height;
+
+  const [x0, v0] = bC2W(cvs, 0,  0);
+  const [x1, v1] = bC2W(cvs, cw, ch);
+
+  const xMin = Math.floor(Math.min(x0,x1)/.25)*.25;
+  const xMax = Math.ceil (Math.max(x0,x1)/.25)*.25;
+  const vMin = Math.floor(Math.min(v0,v1)/.25)*.25;
+  const vMax = Math.ceil (Math.max(v0,v1)/.25)*.25;
+
+  cx.beginPath(); cx.strokeStyle='#0d1a26'; cx.lineWidth=1;
+  for (let x=xMin; x<=xMax+.001; x+=.25) {
+    if (Math.abs(x%1)<.001) continue;
+    const [sx]=bW2C(cvs,x,0); cx.moveTo(sx,0); cx.lineTo(sx,ch);
+  }
+  for (let v=vMin; v<=vMax+.001; v+=.25) {
+    if (Math.abs(v%1)<.001) continue;
+    const [,sy]=bW2C(cvs,0,v); cx.moveTo(0,sy); cx.lineTo(cw,sy);
+  }
+  cx.stroke();
+
+  cx.beginPath(); cx.strokeStyle='#102030'; cx.lineWidth=1;
+  for (let x=Math.floor(xMin); x<=Math.ceil(xMax); x++) {
+    const [sx]=bW2C(cvs,x,0); cx.moveTo(sx,0); cx.lineTo(sx,ch);
+  }
+  for (let v=Math.floor(vMin); v<=Math.ceil(vMax); v++) {
+    const [,sy]=bW2C(cvs,0,v); cx.moveTo(0,sy); cx.lineTo(cw,sy);
+  }
+  cx.stroke();
+
+  const [ox,oy] = bW2C(cvs,0,0);
+  cx.strokeStyle='rgba(80,0,20,.4)'; cx.lineWidth=1;
+  cx.beginPath(); cx.moveTo(0,oy); cx.lineTo(cw,oy); cx.stroke();
+  cx.strokeStyle='rgba(0,20,60,.4)';
+  cx.beginPath(); cx.moveTo(ox,0); cx.lineTo(ox,ch); cx.stroke();
+
+  cx.font=`${9*dpr}px 'Share Tech Mono',monospace`; cx.fillStyle='#4a6a8a';
+  cx.textAlign='center';
+  cx.fillText('+X', cw-18*dpr, oy-5*dpr);
+  cx.fillText('-X', 18*dpr,    oy-5*dpr);
+  const [vPos,vNeg] = bmode==='xz' ? ['+Z','-Z'] : ['+Y','-Y'];
+  cx.textAlign='left';
+  cx.fillText(vPos, ox+4*dpr, 12*dpr);
+  cx.fillText(vNeg, ox+4*dpr, ch-4*dpr);
+
+  cx.fillStyle='#4a9eff';
+  cx.beginPath(); cx.arc(ox,oy,2.5*dpr,0,Math.PI*2); cx.fill();
+  cx.fillStyle='#4a6a8a'; cx.font=`${8*dpr}px 'Share Tech Mono',monospace`; cx.textAlign='left';
+  cx.fillText('origin', ox+4*dpr, oy-3*dpr);
+
+  const sbPx=bZoom*dpr, sbX=12*dpr, sbY=ch-14*dpr;
+  cx.strokeStyle='#4a9eff'; cx.lineWidth=1.5;
+  cx.beginPath();
+  cx.moveTo(sbX,sbY); cx.lineTo(sbX+sbPx,sbY);
+  cx.moveTo(sbX,sbY-3*dpr); cx.lineTo(sbX,sbY+3*dpr);
+  cx.moveTo(sbX+sbPx,sbY-3*dpr); cx.lineTo(sbX+sbPx,sbY+3*dpr);
+  cx.stroke();
+  cx.fillStyle='#4a9eff'; cx.font=`${8*dpr}px 'Share Tech Mono',monospace`; cx.textAlign='center';
+  cx.fillText('1.0m', sbX+sbPx/2, sbY-5*dpr);
+}
+
+function drawBodyTrails(cx, cvs, bmode) {
+  if (!bShowTrails) return;
+  const dpr = devicePixelRatio;
+  for (const trk of trackers.values()) {
+    const pts = trk.trail.slice(-BODY_TRAIL_MAX);
+    if (pts.length < 2) continue;
+    const n = pts.length;
+    for (let i = 1; i < n; i++) {
+      const alpha = i / n;
+      const [x0,y0] = bTrailPt(cvs, pts[i-1], bmode);
+      const [x1,y1] = bTrailPt(cvs, pts[i],   bmode);
+      cx.strokeStyle = hexAlpha(trk.color, alpha * 0.7);
+      cx.lineWidth   = 1.5 * dpr;
+      cx.beginPath(); cx.moveTo(x0,y0); cx.lineTo(x1,y1); cx.stroke();
+    }
+  }
+}
+
+function drawBodyConnectors(cx, cvs, bmode) {
+  const dpr = devicePixelRatio;
+  for (const [fromSlot, toSlot] of BODY_CONNECTORS) {
+    const a = getTrkBySlot(fromSlot);
+    const b = getTrkBySlot(toSlot);
+    if (!a || !b || a.status !== 'tracking' || b.status !== 'tracking') continue;
+    const [ax,ay] = bTrkPt(cvs, a, bmode);
+    const [bx,by] = bTrkPt(cvs, b, bmode);
+    cx.strokeStyle = connColor(a.color, b.color);
+    cx.lineWidth   = 1.5 * dpr;
+    cx.beginPath(); cx.moveTo(ax,ay); cx.lineTo(bx,by); cx.stroke();
+  }
+}
+
+function drawBodyTrackers(cx, cvs, bmode) {
+  const dpr = devicePixelRatio;
+  const r   = TRACKER_R * dpr;
+  const tl  = TICK_LEN  * dpr;
+
+  for (const trk of trackers.values()) {
+    const [sx,sy] = bTrkPt(cvs, trk, bmode);
+    const { color } = trk;
+    const tracking  = trk.status === 'tracking';
+    const alpha     = tracking ? 1 : 0.3;
+
+    const grd = cx.createRadialGradient(sx,sy, r*.5, sx,sy, r*1.9);
+    grd.addColorStop(0, hexAlpha(color, .16*alpha));
+    grd.addColorStop(1, hexAlpha(color, 0));
+    cx.fillStyle = grd;
+    cx.beginPath(); cx.arc(sx,sy, r*1.9, 0, Math.PI*2); cx.fill();
+
+    cx.fillStyle   = hexAlpha(color, .88*alpha);
+    cx.strokeStyle = hexAlpha(color, alpha);
+    cx.lineWidth   = 1.5*dpr;
+    cx.beginPath(); cx.arc(sx,sy, r, 0, Math.PI*2); cx.fill(); cx.stroke();
+
+    if (bmode === 'xz') {
+      const yaw = quatToYawRad(trk.rot.w, trk.rot.x, trk.rot.y, trk.rot.z);
+      cx.strokeStyle = hexAlpha(color, alpha);
+      cx.lineWidth   = 2*dpr;
+      cx.beginPath();
+      cx.moveTo(sx, sy);
+      cx.lineTo(sx + Math.sin(yaw)*tl, sy - Math.cos(yaw)*tl);
+      cx.stroke();
+    }
+
+    cx.fillStyle = hexAlpha(color, alpha);
+    cx.font      = `bold ${9*dpr}px 'Share Tech Mono',monospace`;
+    cx.textAlign = 'center';
+    cx.fillText(trk.name, sx, sy - r - 5*dpr);
+  }
+}
+
+function drawBodyPanel(cx, cvs, bmode) {
+  cx.clearRect(0, 0, cvs.width, cvs.height);
+  drawBodyGrid(cx, cvs, bmode);
+  drawBodyTrails(cx, cvs, bmode);
+  drawBodyConnectors(cx, cvs, bmode);
+  drawBodyTrackers(cx, cvs, bmode);
+}
+
+let bDrag      = false;
+let bLastMouse = { x: 0, y: 0 };
+
+[canvasXZ, canvasXY].forEach(c => {
+  c.addEventListener('mousedown', e => {
+    if (activeTab !== 'body') return;
+    bDrag = true; bLastMouse = { x: e.clientX, y: e.clientY };
+  });
+  c.addEventListener('wheel', e => {
+    if (activeTab !== 'body') return;
+    bZoom = Math.max(10, Math.min(600, bZoom * (e.deltaY > 0 ? 0.9 : 1.1)));
+    e.preventDefault();
+  }, { passive: false });
+});
+
+window.addEventListener('mousemove', e => {
+  if (!bDrag || activeTab !== 'body') return;
+  bPanX -= (e.clientX - bLastMouse.x) / bZoom;
+  bPanV += (e.clientY - bLastMouse.y) / bZoom;
+  bLastMouse = { x: e.clientX, y: e.clientY };
+});
+window.addEventListener('mouseup', () => { bDrag = false; });
+
+window.addEventListener('keydown', e => {
+  if (activeTab !== 'body') return;
+  const PAN = 0.15;
+  switch (e.key) {
+    case 'T': case 't': bShowTrails = !bShowTrails; break;
+    case 'G': case 'g': bShowGrid   = !bShowGrid;   break;
+    case 'R': case 'r': fitView(); break;
+    case '+': case '=': bZoom = Math.min(600, bZoom * 1.2); break;
+    case '-': case '_': bZoom = Math.max(10,  bZoom * 0.8); break;
+    case 'ArrowLeft':   bPanX -= PAN; e.preventDefault(); break;
+    case 'ArrowRight':  bPanX += PAN; e.preventDefault(); break;
+    case 'ArrowUp':     bPanV += PAN; e.preventDefault(); break;
+    case 'ArrowDown':   bPanV -= PAN; e.preventDefault(); break;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WEBSOCKET
+// ═══════════════════════════════════════════════════════════════════════════════
+let ws = null, retries = 0;
+
+function setConn(state) {
+  const dot  = document.getElementById('conn-dot');
+  const text = document.getElementById('conn-text');
+  dot.className = 'conn-dot ' + state;
+  const map = {
+    live:         ['LIVE',          'var(--green)'],
+    reconnecting: ['RECONNECTING…', 'var(--amber)'],
+    disconnected: ['DISCONNECTED',  'var(--muted)'],
+    waiting:      ['WAITING',       'var(--muted)'],
+  };
+  const [label, color] = map[state] || map.waiting;
+  text.textContent = label;
+  text.style.color = color;
+}
+
+function connect() {
+  ws = new WebSocket('ws://localhost:8765');
+
+  ws.onopen = () => {
+    retries = 0;
+    setConn('live');
+    document.getElementById('connect-prompt').style.display = 'none';
+  };
+
+  ws.onclose = () => {
+    setConn(retries > 0 ? 'reconnecting' : 'disconnected');
+    document.getElementById('connect-prompt').style.display = 'flex';
+    retries++;
+    document.getElementById('retry-count').textContent = `Retry ${retries}…`;
+    setTimeout(connect, 2000);
+  };
+
+  ws.onerror = () => { setConn('reconnecting'); };
+
+  ws.onmessage = e => {
+    let d;
+    try { d = JSON.parse(e.data); } catch { return; }
+
+    // Flat serial-keyed format (current daemon)
+    if (!d.type && d.meta !== undefined) {
+      const meta = d.meta;
+      let activeCount = 0;
+      for (const [serial, entry] of Object.entries(d)) {
+        if (serial === 'meta') continue;
+        if (!entry || typeof entry !== 'object' || !entry.position) continue;
+        const trk  = getOrCreate(serial);
+        trk.status = 'tracking';
+        trk.pos    = { x: entry.position.x, y: entry.position.y, z: entry.position.z };
+        trk.rot    = { w: entry.rotation.w, x: entry.rotation.x, y: entry.rotation.y, z: entry.rotation.z };
+        trk.batteryPct = (entry.battery_pct !== undefined) ? entry.battery_pct : null;
+        trk.trail.push({ x: trk.pos.x, y: trk.pos.y, z: trk.pos.z });
+        if (trk.trail.length > TRAIL_MAX) trk.trail.shift();
+        activeCount++;
+        trk.localFrame++;
+        trk.fpsCounter++;
+        const now = Date.now();
+        const dt  = (now - trk.lastFpsStamp) / 1000;
+        if (dt >= 1.0) {
+          trk.fps = Math.round(trk.fpsCounter / dt);
+          trk.fpsCounter   = 0;
+          trk.lastFpsStamp = now;
+        }
+        updateCard(trk);
+      }
+      const set = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+      set('gs-fps',    (meta?.fps ?? '—') + ' fps');
+      set('gs-active', activeCount + ' tracker' + (activeCount !== 1 ? 's' : ''));
+      if (firstPose && activeCount > 0) { fitView(); firstPose = false; }
+    }
+
+    if (d.type === 'pose_multi') {
+      const globalFps   = d.stats?.packets_per_sec ?? 0;
+      const globalFrame = d.frame_id ?? 0;
+      let   activeCount = 0;
+
+      for (const td of d.trackers) {
+        const trk = getOrCreate(td.id);
+        trk.status = td.valid ? 'tracking' : (td.status || 'lost');
+
+        if (td.valid) {
+          trk.pos = { ...td.pos };
+          trk.rot = { ...td.rot };
+          activeCount++;
+
+          if (d.trajectories && d.trajectories[td.id]) {
+            trk.trail = d.trajectories[td.id].slice(-TRAIL_MAX);
+          } else {
+            trk.trail.push({ x: td.pos.x, y: td.pos.y, z: td.pos.z });
+            if (trk.trail.length > TRAIL_MAX) trk.trail.shift();
+          }
+        }
+
+        trk.localFrame++;
+        trk.fpsCounter++;
+        const now = Date.now();
+        const dt  = (now - trk.lastFpsStamp) / 1000;
+        if (dt >= 1.0) {
+          trk.fps = Math.round(trk.fpsCounter / dt);
+          trk.fpsCounter   = 0;
+          trk.lastFpsStamp = now;
+        }
+
+        updateCard(trk);
+      }
+
+      const set = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+      set('gs-fps',    globalFps + ' fps');
+      set('gs-frame',  globalFrame.toLocaleString());
+      set('gs-active', activeCount + ' tracker' + (activeCount !== 1 ? 's' : ''));
+
+      if (firstPose && activeCount > 0) { fitView(); firstPose = false; }
+    }
+
+    if (d.type === 'pose' && d.pos && d.rot) {
+      const serial = d.stats?.tracker_id || 'tracker-0';
+      const trk    = getOrCreate(serial);
+      trk.status   = 'tracking';
+      trk.pos      = { ...d.pos };
+      trk.rot      = { ...d.rot };
+      trk.trail.push({ x: d.pos.x, y: d.pos.y, z: d.pos.z });
+      if (trk.trail.length > TRAIL_MAX) trk.trail.shift();
+      trk.localFrame++;
+      updateCard(trk);
+    }
+  };
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+connect();
+switchTab(activeTab);
+startLoop();
+</script>
+</body>
+</html>

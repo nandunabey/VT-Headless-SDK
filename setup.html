@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIVE TRACKER — SETUP</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: #0a0a0a;
+    color: #cccccc;
+    font-family: monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: #111111;
+    border-bottom: 1px solid #1e1e1e;
+    padding: 0 20px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .h-left { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #666; }
+  .h-sep  { flex: 1; }
+  .h-right { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #00ffcc; }
+
+  .content {
+    flex: 1;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 28px 20px;
+    width: 100%;
+  }
+
+  .intro {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.7;
+    margin-bottom: 22px;
+    letter-spacing: 0.5px;
+  }
+
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .trk-card {
+    background: #111111;
+    border: 1px solid #1e1e1e;
+    border-radius: 3px;
+    padding: 14px 16px;
+    transition: border-color 0.2s;
+  }
+  .trk-card.lost { border-color: #ffaa00; }
+
+  .trk-header {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 9px;
+    flex-wrap: wrap;
+  }
+  .trk-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .trk-name  { font-size: 13px; letter-spacing: 1px; color: #ffffff; }
+  .trk-serial { font-size: 10px; color: #444; letter-spacing: 0.5px; flex: 1; }
+  .trk-model  { font-size: 10px; color: #444; }
+
+  .trk-badge {
+    font-size: 8px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .badge-tracking { background: rgba(0,230,118,.1); border: 1px solid #00e676; color: #00e676; }
+  .badge-lost     { background: rgba(255,170,0,.1);  border: 1px solid #ffaa00; color: #ffaa00; }
+
+  .trk-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    font-size: 10px;
+    color: #444;
+  }
+  .trk-batt-pct { min-width: 26px; }
+  .trk-batt-body {
+    width: 20px; height: 8px;
+    border: 1px solid #333;
+    border-radius: 1px;
+    position: relative;
+    overflow: hidden;
+  }
+  .trk-batt-nub {
+    width: 2px; height: 5px;
+    background: #333;
+    border-radius: 0 1px 1px 0;
+    flex-shrink: 0;
+  }
+  .trk-batt-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    transition: width .5s, background .5s;
+  }
+
+  .trk-role-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .role-label {
+    font-size: 10px;
+    color: #444;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+    width: 36px;
+  }
+  select.role-select {
+    background: #0a0a0a;
+    border: 1px solid #2a2a2a;
+    color: #cccccc;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 5px 24px 5px 8px;
+    border-radius: 2px;
+    flex: 1;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+  }
+  select.role-select:focus { outline: none; border-color: #00ffcc; }
+  select.role-select option { background: #111; }
+
+  input.custom-role {
+    background: #0a0a0a;
+    border: 1px solid #00ffcc;
+    color: #00ffcc;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 5px 8px;
+    border-radius: 2px;
+    flex: 1;
+    display: none;
+  }
+  input.custom-role:focus { outline: none; }
+  input.custom-role.visible { display: block; }
+
+  #waiting {
+    text-align: center;
+    padding: 48px 0;
+    font-size: 11px;
+    color: #444;
+    letter-spacing: 1px;
+  }
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid #222;
+    border-top-color: #00ffcc;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 14px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #status-banner {
+    display: none;
+    padding: 11px 20px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-align: center;
+    border-top: 1px solid #1e1e1e;
+    flex-shrink: 0;
+  }
+  #status-banner.ok   { color: #00e676; border-color: rgba(0,230,118,.3); background: rgba(0,230,118,.04); }
+  #status-banner.err  { color: #ff4444; border-color: rgba(255,68,68,.3);  background: rgba(255,68,68,.04); }
+  #status-banner.warn { color: #ffaa00; border-color: rgba(255,170,0,.3);  background: rgba(255,170,0,.04); }
+
+  .bottom-bar {
+    background: #111111;
+    border-top: 1px solid #1e1e1e;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .trk-count { font-size: 11px; color: #444; letter-spacing: 1px; flex: 1; }
+  .btn-row { display: flex; gap: 10px; }
+
+  button.btn {
+    background: #0a0a0a;
+    border: 1px solid #2a2a2a;
+    color: #666;
+    font-family: monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 8px 18px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: border-color .2s, color .2s;
+  }
+  button.btn:hover { border-color: #444; color: #ccc; }
+  button.btn.primary { border-color: #00ffcc; color: #00ffcc; }
+  button.btn.primary:hover { background: rgba(0,255,204,.06); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-left">VIVE TRACKER — HEADLESS SDK</div>
+  <div class="h-sep"></div>
+  <div class="h-right">TRACKER SETUP</div>
+</header>
+
+<div class="content">
+  <p class="intro">
+    Assign a role to each tracker.<br>
+    This is saved permanently and never needs to be repeated.
+  </p>
+
+  <div id="waiting">
+    <div class="spinner"></div>
+    Waiting for trackers — ws://localhost:8765
+  </div>
+
+  <div class="cards" id="cards"></div>
+</div>
+
+<div id="status-banner"></div>
+
+<div class="bottom-bar">
+  <div class="trk-count" id="trk-count">0 trackers detected</div>
+  <div class="btn-row">
+    <button class="btn" onclick="doSkip()">SKIP</button>
+    <button class="btn primary" onclick="doSave()">SAVE ROLES</button>
+  </div>
+</div>
+
+<script>
+const SLOT_COLORS = ['#00e5ff', '#ffb300', '#00e676', '#ff5252'];
+
+const ROLES = [
+  '',
+  'head', 'neck', 'chest', 'waist',
+  'left_shoulder', 'right_shoulder',
+  'left_elbow',    'right_elbow',
+  'left_wrist',    'right_wrist',
+  'left_knee',     'right_knee',
+  'left_foot',     'right_foot',
+  'object_1', 'object_2', 'object_3',
+  '__custom__',
+];
+
+function roleLabel(r) {
+  if (r === '')         return '-- unassigned --';
+  if (r === '__custom__') return 'custom…';
+  return r;
+}
+
+function buildOptions() {
+  return ROLES.map(r => `<option value="${r}">${roleLabel(r)}</option>`).join('');
+}
+
+const trackerMap = new Map();
+let slotIndex = 0;
+
+function getOrCreate(serial, entry) {
+  if (trackerMap.has(serial)) return trackerMap.get(serial);
+  const slot  = slotIndex++;
+  const color = SLOT_COLORS[slot % SLOT_COLORS.length];
+  const name  = 'VUT-' + String(slot + 1).padStart(2, '0');
+  const state = { serial, slot, color, name, status: 'waiting', batteryPct: null };
+  trackerMap.set(serial, state);
+  buildCard(state, entry);
+  return state;
+}
+
+function buildCard(state, entry) {
+  document.getElementById('waiting').style.display = 'none';
+  const model = (entry && entry.model) ? entry.model : '';
+  const div   = document.createElement('div');
+  div.className = 'trk-card lost';
+  div.id = 'trk-card-' + state.serial;
+  div.innerHTML = `
+    <div class="trk-header">
+      <div class="trk-dot" style="background:${state.color};box-shadow:0 0 4px ${state.color}66"></div>
+      <div class="trk-name">${state.name}</div>
+      <div class="trk-serial">${state.serial}</div>
+      <div class="trk-model">${model}</div>
+      <div class="trk-badge badge-lost" id="badge-${state.serial}">LOST</div>
+    </div>
+    <div class="trk-meta">
+      Battery:&nbsp;<span id="batt-pct-${state.serial}" class="trk-batt-pct">—%</span>
+      <div style="display:flex;align-items:center;gap:0">
+        <div class="trk-batt-body"><div class="trk-batt-fill" id="batt-fill-${state.serial}"></div></div>
+        <div class="trk-batt-nub"></div>
+      </div>
+    </div>
+    <div class="trk-role-row">
+      <div class="role-label">Role</div>
+      <select class="role-select" id="role-${state.serial}" onchange="onRoleChange('${state.serial}')">
+        ${buildOptions()}
+      </select>
+      <input type="text" class="custom-role" id="custom-${state.serial}" placeholder="enter role name…">
+    </div>`;
+  document.getElementById('cards').appendChild(div);
+}
+
+function updateCard(state) {
+  const tracking = state.status === 'tracking';
+  const card  = document.getElementById('trk-card-' + state.serial);
+  const badge = document.getElementById('badge-'    + state.serial);
+  if (card)  card.className  = 'trk-card' + (tracking ? '' : ' lost');
+  if (badge) {
+    badge.textContent = tracking ? 'TRACKING' : 'LOST';
+    badge.className   = 'trk-badge ' + (tracking ? 'badge-tracking' : 'badge-lost');
+  }
+  const batt     = state.batteryPct;
+  const battPct  = document.getElementById('batt-pct-'  + state.serial);
+  const battFill = document.getElementById('batt-fill-' + state.serial);
+  const bColor   = batt === null ? '#333' : batt > 60 ? '#00e676' : batt >= 30 ? '#ffaa00' : '#ff4444';
+  if (battPct)  { battPct.textContent  = batt !== null ? batt + '%' : '—%'; battPct.style.color = bColor; }
+  if (battFill) { battFill.style.width = batt !== null ? batt + '%' : '0%'; battFill.style.background = bColor; }
+}
+
+function onRoleChange(serial) {
+  const sel = document.getElementById('role-'   + serial);
+  const inp = document.getElementById('custom-' + serial);
+  if (sel.value === '__custom__') { inp.classList.add('visible');    inp.focus(); }
+  else                            { inp.classList.remove('visible'); }
+}
+
+function updateCount() {
+  const n = trackerMap.size;
+  document.getElementById('trk-count').textContent =
+    n + ' tracker' + (n !== 1 ? 's' : '') + ' detected';
+}
+
+function showBanner(msg, cls) {
+  const b = document.getElementById('status-banner');
+  b.textContent   = msg;
+  b.className     = cls;
+  b.style.display = 'block';
+}
+
+function doSkip() {
+  window.location.href = 'http://localhost:8080/visualiser.html';
+}
+
+async function doSave() {
+  const roles = {};
+  const seen  = {};
+  let   dupWarn = false;
+
+  for (const [serial] of trackerMap) {
+    const sel  = document.getElementById('role-'   + serial);
+    const inp  = document.getElementById('custom-' + serial);
+    let   role = sel ? sel.value : '';
+
+    if (role === '__custom__') {
+      role = (inp ? inp.value.trim() : '').toLowerCase().replace(/\s+/g, '_');
+    }
+    if (!role) continue;
+
+    if (seen[role]) dupWarn = true;
+    seen[role]    = true;
+    roles[serial] = role;
+  }
+
+  if (dupWarn) {
+    if (!confirm('Warning: two or more trackers share the same role.\nSave anyway?')) return;
+  }
+
+  showBanner('Saving…', 'warn');
+  try {
+    const res  = await fetch('http://localhost:8080/save-roles', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(roles),
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      showBanner('Roles saved — opening dashboard…', 'ok');
+      setTimeout(() => { window.location.href = 'http://localhost:8080/visualiser.html'; }, 2000);
+    } else {
+      showBanner('Error: ' + (data.message || 'unknown'), 'err');
+    }
+  } catch (e) {
+    showBanner('Save failed — is the daemon running?  ' + e.message, 'err');
+  }
+}
+
+// ── WebSocket ──────────────────────────────────────────────────────────────────
+let ws = null;
+
+function connect() {
+  ws = new WebSocket('ws://localhost:8765');
+  ws.onclose  = () => setTimeout(connect, 2000);
+  ws.onerror  = () => {};
+
+  ws.onmessage = e => {
+    let d;
+    try { d = JSON.parse(e.data); } catch { return; }
+
+    // Flat serial-keyed format (current daemon)
+    if (!d.type && d.meta !== undefined) {
+      const active = new Set();
+      for (const [serial, entry] of Object.entries(d)) {
+        if (serial === 'meta') continue;
+        if (!entry || typeof entry !== 'object' || !entry.position) continue;
+        const state = getOrCreate(serial, entry);
+        state.status     = 'tracking';
+        state.batteryPct = entry.battery_pct !== undefined ? entry.battery_pct : null;
+        updateCard(state);
+        active.add(serial);
+      }
+      for (const [serial, state] of trackerMap) {
+        if (!active.has(serial) && state.status === 'tracking') {
+          state.status = 'lost';
+          updateCard(state);
+        }
+      }
+      updateCount();
+    }
+
+    // Legacy pose_multi format
+    if (d.type === 'pose_multi' && Array.isArray(d.trackers)) {
+      for (const td of d.trackers) {
+        if (!td.id) continue;
+        const state  = getOrCreate(td.id, null);
+        state.status = td.valid ? 'tracking' : 'lost';
+        updateCard(state);
+      }
+      updateCount();
+    }
+  };
+}
+
+connect();
+</script>
+</body>
+</html>

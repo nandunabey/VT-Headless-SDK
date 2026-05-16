@@ -1,6 +1,6 @@
 """
 vtrackerd_openvr.py
-VIVE Ultimate Tracker -> OpenVR pose -> WebSocket broadcast
+VIVE Ultimate Tracker -> OpenVR pose -> WebSocket broadcast + HTTP server
 Supports multiple simultaneous trackers.
 
 Requirements:  pip install openvr websockets
@@ -11,21 +11,78 @@ Stack needed:
   - Trackers USB connected, LEDs solid
 """
 
+import argparse
 import asyncio
 import json
 import math
 import sys
 import time
-from collections import deque
+import threading
+from functools import partial
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+from pathlib import Path
 
 import openvr
 import websockets
 
-WS_HOST      = "0.0.0.0"
-WS_PORT      = 8765
-BROADCAST_HZ = 30
-POLL_HZ      = 100
-TRAJ_LEN     = 500
+WS_HOST     = "0.0.0.0"
+WS_PORT     = 8765
+HTTP_PORT   = 8080
+POLL_HZ     = 100
+
+VUT_SDK_DIR = Path(__file__).resolve().parent          # C:\Users\vive_\dev\vut-sdk
+ROLES_FILE  = VUT_SDK_DIR / "tracker_roles.json"
+
+
+# ---------------------------------------------------------------------------
+# HTTP server — static files + POST /save-roles
+# ---------------------------------------------------------------------------
+
+class _HttpHandler(SimpleHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin",  "*")
+        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def do_POST(self):
+        if self.path != "/save-roles":
+            self.send_response(404)
+            self.end_headers()
+            return
+        length = int(self.headers.get("Content-Length", 0))
+        body   = self.rfile.read(length)
+        try:
+            roles = json.loads(body)
+            if not isinstance(roles, dict) or not all(
+                isinstance(k, str) and isinstance(v, str)
+                for k, v in roles.items()
+            ):
+                raise ValueError("Expected dict of string → string")
+            with open(ROLES_FILE, "w") as fh:
+                json.dump(roles, fh, indent=2)
+            resp = json.dumps({"status": "ok"}).encode()
+            code = 200
+        except Exception as exc:
+            resp = json.dumps({"status": "error", "message": str(exc)}).encode()
+            code = 400
+        self.send_response(code)
+        self.send_header("Content-Type",                "application/json")
+        self.send_header("Content-Length",              len(resp))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(resp)
+
+    def log_message(self, *_):
+        pass
+
+
+def _start_http() -> None:
+    handler = partial(_HttpHandler, directory=str(VUT_SDK_DIR))
+    server  = HTTPServer(("", HTTP_PORT), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    print(f"HTTP server      ->  http://localhost:{HTTP_PORT}")
 
 
 # ---------------------------------------------------------------------------
@@ -67,12 +124,11 @@ def _mat34_to_pos_quat(mat):
 # ---------------------------------------------------------------------------
 # State shared between coroutines (all on the same asyncio thread)
 # ---------------------------------------------------------------------------
-_clients:     set        = set()
-_latest_msg:  str | None = None   # pose_multi  (new format)
-_compat_msg:  str | None = None   # pose        (backwards-compat, first tracker only)
-_frame_id    = 0
-_pkts_total  = 0
-_pps         = 0.0
+_clients:    set        = set()
+_latest_msg: str | None = None   # serial-keyed pose dict
+_frame_id   = 0
+_pkts_total = 0
+_pps        = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -90,26 +146,21 @@ async def _ws_handler(websocket):
 
 
 # ---------------------------------------------------------------------------
-# Main loop: poll OpenVR at POLL_HZ, broadcast at BROADCAST_HZ
+# Main loop: poll OpenVR at POLL_HZ, broadcast at --fps rate
 # ---------------------------------------------------------------------------
-async def _main_loop(vr, trackers):
+async def _main_loop(vr, trackers, broadcast_hz: int):
     """trackers: list of {"index": int, "serial": str, "model": str}"""
-    global _latest_msg, _compat_msg, _frame_id, _pkts_total, _pps
+    global _latest_msg, _frame_id, _pkts_total, _pps
 
     poll_interval      = 1.0 / POLL_HZ
-    broadcast_interval = 1.0 / BROADCAST_HZ
+    broadcast_interval = 1.0 / broadcast_hz
+    latency_ms         = round(1000 / broadcast_hz)
     status_interval    = 0.1          # 10 Hz console
 
     last_broadcast = 0.0
     last_status    = 0.0
     pps_count      = 0
     pps_t0         = time.perf_counter()
-
-    # Per-tracker trajectory buffers keyed by serial
-    trajectories = {t["serial"]: deque(maxlen=TRAJ_LEN) for t in trackers}
-
-    # First tracker is the primary for the backwards-compat single-pose message
-    primary_serial = trackers[0]["serial"]
 
     while True:
         t0 = time.perf_counter()
@@ -120,41 +171,42 @@ async def _main_loop(vr, trackers):
             openvr.k_unMaxTrackedDeviceCount,
         )
 
-        tracker_payloads = []
+        # Keyed by serial — stable across SteamVR restarts unlike session index
+        serial_poses: dict = {}
         any_valid = False
 
         for trk in trackers:
             idx    = trk["index"]
             serial = trk["serial"]
+            model  = trk["model"]
             p      = all_poses[idx]
 
             if p.bPoseIsValid and p.eTrackingResult == openvr.TrackingResult_Running_OK:
                 pos, quat = _mat34_to_pos_quat(p.mDeviceToAbsoluteTracking)
-                pt = {"x": round(pos[0], 4),
-                      "y": round(pos[1], 4),
-                      "z": round(pos[2], 4)}
-                trajectories[serial].append(pt)
-                tracker_payloads.append({
-                    "id":    serial,
-                    "index": idx,
-                    "pos":   pt,
-                    "rot": {
+                try:
+                    batt_raw    = vr.getFloatTrackedDeviceProperty(
+                        idx, openvr.Prop_DeviceBatteryPercentage_Float)
+                    battery_pct = int(round(batt_raw * 100))
+                except Exception:
+                    battery_pct = None
+                serial_poses[serial] = {
+                    "position": {
+                        "x": round(pos[0], 4),
+                        "y": round(pos[1], 4),
+                        "z": round(pos[2], 4),
+                    },
+                    "rotation": {
                         "w": round(quat[0], 6),
                         "x": round(quat[1], 6),
                         "y": round(quat[2], 6),
                         "z": round(quat[3], 6),
                     },
-                    "valid": True,
-                })
+                    "timestamp":     time.time(),
+                    "battery_pct":   battery_pct,
+                    "session_index": idx,    # informational only — do not key on this
+                    "model":         model,  # informational only
+                }
                 any_valid = True
-            else:
-                tracker_payloads.append({
-                    "id":    serial,
-                    "index": idx,
-                    "pos":   {"x": 0.0, "y": 0.0, "z": 0.0},
-                    "rot":   {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0},
-                    "valid": False,
-                })
 
         if any_valid:
             _frame_id   += 1
@@ -167,56 +219,22 @@ async def _main_loop(vr, trackers):
                 pps_count = 0
                 pps_t0    = t0
 
-            now_ms = int(time.time() * 1000)
+            payload = dict(serial_poses)
+            payload["meta"] = {
+                "fps":           broadcast_hz,
+                "latency_ms":    latency_ms,
+                "tracker_count": len(serial_poses),
+            }
+            _latest_msg = json.dumps(payload)
 
-            # --- pose_multi: all trackers ---
-            _latest_msg = json.dumps({
-                "type":      "pose_multi",
-                "trackers":  tracker_payloads,
-                "timestamp": now_ms,
-                "frame_id":  _frame_id,
-                "stats": {
-                    "tracker_count":   len(trackers),
-                    "packets_per_sec": _pps,
-                    "status":          "tracking",
-                },
-                "trajectories": {
-                    serial: list(traj)
-                    for serial, traj in trajectories.items()
-                },
-            })
-
-            # --- pose: backwards-compat single-tracker (primary) ---
-            primary = next(
-                (t for t in tracker_payloads if t["id"] == primary_serial),
-                tracker_payloads[0]
-            )
-            _compat_msg = json.dumps({
-                "type":      "pose",
-                "pos":       primary["pos"],
-                "rot":       primary["rot"],
-                "timestamp": now_ms,
-                "frame_id":  _frame_id,
-                "stats": {
-                    "packets_received": _pkts_total,
-                    "packets_per_sec":  _pps,
-                    "packet_size":      48,
-                    "parse_format":     "openvr_matrix34",
-                    "status":           "tracking",
-                    "tracker_id":       primary_serial,
-                },
-                "trajectory": list(trajectories[primary_serial]),
-            })
-
-        # --- broadcast at BROADCAST_HZ ---
+        # --- broadcast at --fps rate ---
         now = time.perf_counter()
-        if _latest_msg and _compat_msg and _clients and (now - last_broadcast) >= broadcast_interval:
+        if _latest_msg and _clients and (now - last_broadcast) >= broadcast_interval:
             last_broadcast = now
             dead = set()
             for ws in list(_clients):
                 try:
                     await ws.send(_latest_msg)
-                    await ws.send(_compat_msg)
                 except Exception:
                     dead.add(ws)
             _clients.difference_update(dead)
@@ -225,15 +243,16 @@ async def _main_loop(vr, trackers):
         if any_valid and (now - last_status) >= status_interval:
             last_status = now
             parts = [f"frame={_frame_id:6d}  {_pps:.0f}Hz  clients={len(_clients)}"]
-            for i, tp in enumerate(tracker_payloads, 1):
-                p = tp["pos"]
-                if tp["valid"]:
+            for i, trk in enumerate(trackers, 1):
+                entry = serial_poses.get(trk["serial"])
+                if entry:
+                    p = entry["position"]
                     parts.append(
-                        f"  T{i}({tp['id'][-8:]}): "
+                        f"  T{i}({trk['serial'][-8:]}): "
                         f"({p['x']:+.3f},{p['y']:+.3f},{p['z']:+.3f})"
                     )
                 else:
-                    parts.append(f"  T{i}({tp['id'][-8:]}): --no pose--")
+                    parts.append(f"  T{i}({trk['serial'][-8:]}): --no pose--")
             print("  " + "".join(parts) + "   ", end="\r")
 
         # --- sleep remainder of poll interval ---
@@ -245,6 +264,14 @@ async def _main_loop(vr, trackers):
 # Entry point
 # ---------------------------------------------------------------------------
 def main():
+    parser = argparse.ArgumentParser(description="VUT tracker WebSocket daemon")
+    parser.add_argument(
+        "--fps", type=int, default=30, choices=[30, 60, 100],
+        help="Broadcast rate (30=~33ms, 60=~17ms, 100=~10ms latency)",
+    )
+    args = parser.parse_args()
+    latency_ms = round(1000 / args.fps)
+
     print("Initialising OpenVR...")
     try:
         vr = openvr.init(openvr.VRApplication_Background)
@@ -276,12 +303,15 @@ def main():
         sys.exit(1)
 
     print(f"\n  {len(trackers)} tracker(s) found")
+    print(f"  [OK] Broadcast rate  : {args.fps} fps (~{latency_ms}ms latency)")
+
+    _start_http()
 
     async def _run():
         async with websockets.serve(_ws_handler, WS_HOST, WS_PORT):
-            print(f"\nWebSocket server  ->  ws://localhost:{WS_PORT}")
-            print(f"Polling at {POLL_HZ} Hz, broadcasting at {BROADCAST_HZ} fps\n")
-            await _main_loop(vr, trackers)
+            print(f"WebSocket server  ->  ws://localhost:{WS_PORT}")
+            print(f"Polling at {POLL_HZ} Hz, broadcasting at {args.fps} fps\n")
+            await _main_loop(vr, trackers, args.fps)
 
     try:
         asyncio.run(_run())
