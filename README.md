@@ -237,6 +237,9 @@ identifiers. Always key on the serial number (top-level dict key).
 - No built-in recording/playback (use --mock in vut-skeleton)
 - SteamVR must be running before starting the SDK stack
 
+See [docs/ACCURACY.md](docs/ACCURACY.md) for validated
+accuracy figures and comparison to other systems.
+
 ---
 
 ## Related projects
