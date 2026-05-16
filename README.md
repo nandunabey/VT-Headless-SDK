@@ -98,6 +98,36 @@ async def receive_poses():
 asyncio.run(receive_poses())
 ```
 
+### Using the Python SDK directly
+```python
+from vut_sdk.tracker import VUTTracker
+
+tracker = VUTTracker("41-A33204726")  # serial number
+tracker.connect()
+
+# Single pose read
+pose = tracker.get_pose()
+print(pose.position, pose.rotation)
+
+# Streaming
+def on_pose(pose):
+    print(f"{pose.tracker_id}: {pose.position}")
+
+tracker.on_pose(on_pose)
+tracker.stream()  # blocks, calls on_pose at --fps rate
+```
+
+### Multiple trackers simultaneously
+```python
+from vut_sdk.fleet import VUTTrackerFleet
+
+fleet = VUTTrackerFleet()
+fleet.connect_all()
+
+for serial, pose in fleet.get_poses().items():
+    print(f"{serial}: {pose.position}")
+```
+
 ---
 
 ## Screenshots
