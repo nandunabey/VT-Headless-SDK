@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIVE Tracker — Recorder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;500;700&display=swap');
+
+  :root {
+    --bg:     #070c12;
+    --panel:  #0a0d10;
+    --panel2: #0d1118;
+    --border: #1a2332;
+    --cyan:   #00e5ff;
+    --amber:  #ffb300;
+    --green:  #00e676;
+    --red:    #ff5252;
+    --text:   #ccddf0;
+    --muted:  #4a6a8a;
+    --accent: #4a9eff;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-ui:   'Rajdhani', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    height: 100vh;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: 46px 1fr 32px;
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    gap: 14px;
+  }
+
+  .h-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .h-title em { color: var(--accent); font-style: normal; }
+
+  .h-sep { flex: 1; }
+
+  .conn-status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+  .conn-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background .3s;
+  }
+  .conn-dot.live         { background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 2s infinite; }
+  .conn-dot.reconnecting { background: var(--amber); animation: blink .5s infinite; }
+  .conn-dot.disconnected { background: var(--red); }
+  .conn-dot.waiting      { background: var(--muted); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  .h-back {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 1px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    transition: color .2s, border-color .2s;
+  }
+  .h-back:hover { color: var(--cyan); border-color: var(--cyan); }
+
+  /* ── Main layout ── */
+  .main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    overflow: hidden;
+  }
+
+  /* ── Left column (RECORD + EXPORT) ── */
+  .left-col {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  /* ── Panel sections ── */
+  .section {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+  }
+  .section-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* ── RECORD section ── */
+  .rec-label-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .rec-label-input {
+    flex: 1;
+    background: #0d1520;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 5px 8px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .rec-label-input:focus { border-color: var(--accent); }
+  .rec-label-input::placeholder { color: var(--muted); }
+
+  .rec-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .btn {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted);
+    transition: color .2s, border-color .2s, background .2s;
+    white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { color: var(--text); border-color: var(--text); }
+  .btn:disabled { opacity: .35; cursor: default; }
+
+  .btn-rec {
+    border-color: var(--red);
+    color: var(--red);
+    flex: 1;
+  }
+  .btn-rec:hover:not(:disabled) { background: rgba(255,82,82,.1); }
+  .btn-rec.active { background: rgba(255,82,82,.15); animation: rec-pulse 1.2s infinite; }
+  @keyframes rec-pulse { 0%,100%{border-color:var(--red)} 50%{border-color:rgba(255,82,82,.4)} }
+
+  .btn-stop {
+    border-color: var(--muted);
+    color: var(--muted);
+  }
+  .btn-stop:hover:not(:disabled) { border-color: var(--text); color: var(--text); background: rgba(255,255,255,.04); }
+
+  .rec-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .rec-stat {
+    background: #0d1520;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 7px 10px;
+  }
+  .rec-stat-label {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .rec-stat-val {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    color: var(--text);
+    letter-spacing: 1px;
+  }
+  .rec-stat-val.recording { color: var(--red); }
+
+  /* ── EXPORT section ── */
+  .export-select {
+    width: 100%;
+    background: #0d1520;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 5px 8px;
+    outline: none;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color .2s;
+  }
+  .export-select:focus { border-color: var(--accent); }
+
+  .export-format-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .export-fmt-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-right: 4px;
+  }
+  .btn-fmt {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted);
+    transition: color .2s, border-color .2s, background .2s;
+  }
+  .btn-fmt:hover { color: var(--text); border-color: var(--accent); }
+  .btn-fmt.selected { color: var(--accent); border-color: var(--accent); background: rgba(74,158,255,.08); }
+
+  .btn-export {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    color: var(--accent);
+    background: rgba(74,158,255,.06);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .btn-export:hover:not(:disabled) { background: rgba(74,158,255,.15); color: var(--cyan); }
+  .btn-export:disabled { opacity: .35; cursor: default; }
+
+  /* ── Right column (PLAYBACK / sessions) ── */
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .playback-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .playback-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .playback-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .pb-now-playing {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pb-now-playing span { color: var(--cyan); }
+
+  .btn-play  { border-color: var(--green); color: var(--green); }
+  .btn-play:hover:not(:disabled) { background: rgba(0,230,118,.1); }
+  .btn-pause { border-color: var(--amber); color: var(--amber); }
+  .btn-pause:hover:not(:disabled) { background: rgba(255,179,0,.1); }
+  .btn-pb-stop { border-color: var(--muted); color: var(--muted); }
+  .btn-pb-stop:hover:not(:disabled) { border-color: var(--text); color: var(--text); }
+
+  .speed-select {
+    background: #0d1520;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 5px 8px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color .2s;
+  }
+  .speed-select:focus { border-color: var(--accent); }
+
+  .scrub-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .scrub-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    position: relative;
+    cursor: pointer;
+  }
+  .scrub-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width .1s;
+    pointer-events: none;
+  }
+  .scrub-handle {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: var(--text);
+    border-radius: 50%;
+    pointer-events: none;
+    transition: left .1s;
+  }
+  .scrub-time {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ── Session list ── */
+  .session-list-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 12px;
+  }
+  .session-list-wrap::-webkit-scrollbar { width: 4px; }
+  .session-list-wrap::-webkit-scrollbar-track { background: transparent; }
+  .session-list-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .session-empty {
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    padding: 40px 0;
+    letter-spacing: 1px;
+  }
+
+  .session-item {
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .session-item:hover { border-color: #2a3a50; background: rgba(74,158,255,.03); }
+  .session-item.selected { border-color: var(--accent); background: rgba(74,158,255,.06); }
+  .session-item.playing  { border-color: var(--green);  background: rgba(0,230,118,.04); }
+
+  .si-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .si-label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+    letter-spacing: .5px;
+  }
+  .si-duration {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--cyan);
+    white-space: nowrap;
+  }
+
+  .si-meta {
+    display: flex;
+    gap: 12px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .si-meta span { white-space: nowrap; }
+  .si-meta .hi { color: var(--accent); }
+
+  /* ── Status bar ── */
+  .statusbar {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 20px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .sb-item { display: flex; align-items: center; gap: 5px; }
+  .sb-val { color: var(--text); }
+  .sb-sep { flex: 1; }
+  .sb-msg { color: var(--muted); font-style: normal; transition: color .3s; }
+  .sb-msg.ok  { color: var(--green); }
+  .sb-msg.err { color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="h-title">VIVE <em>TRACKER</em> — RECORDER</div>
+  <div class="h-sep"></div>
+  <div class="conn-status">
+    <div class="conn-dot waiting" id="conn-dot"></div>
+    <span id="conn-text" style="color:var(--muted)">WAITING</span>
+    <span style="color:var(--muted);font-size:9px">ws://localhost:8765</span>
+  </div>
+  <a href="http://localhost:8080/visualiser.html" class="h-back">← VISUALISER</a>
+</header>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- ── Left column ── -->
+  <div class="left-col">
+
+    <!-- RECORD -->
+    <div class="section">
+      <div class="section-title">Record</div>
+
+      <div class="rec-label-row">
+        <input class="rec-label-input" id="rec-label" type="text"
+               placeholder="Session label (optional)" maxlength="64">
+      </div>
+
+      <div class="rec-controls">
+        <button class="btn btn-rec" id="btn-record" onclick="startRecording()">● RECORD</button>
+        <button class="btn btn-stop" id="btn-stop-rec" disabled onclick="stopRecording()">■ STOP</button>
+      </div>
+
+      <div class="rec-stats">
+        <div class="rec-stat">
+          <div class="rec-stat-label">Timer</div>
+          <div class="rec-stat-val" id="rec-timer">00:00:00</div>
+        </div>
+        <div class="rec-stat">
+          <div class="rec-stat-label">Frames</div>
+          <div class="rec-stat-val" id="rec-frames">0</div>
+        </div>
+        <div class="rec-stat">
+          <div class="rec-stat-label">Trackers</div>
+          <div class="rec-stat-val" id="rec-trackers">0</div>
+        </div>
+        <div class="rec-stat">
+          <div class="rec-stat-label">Size</div>
+          <div class="rec-stat-val" id="rec-size">0 KB</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div class="section">
+      <div class="section-title">Export</div>
+
+      <select class="export-select" id="export-select">
+        <option value="">— select session —</option>
+      </select>
+
+      <div class="export-format-row">
+        <span class="export-fmt-label">Format:</span>
+        <button class="btn-fmt selected" id="fmt-csv"  onclick="selectFmt('csv')">CSV</button>
+        <button class="btn-fmt"          id="fmt-json" onclick="selectFmt('json')">JSON</button>
+      </div>
+
+      <button class="btn-export" id="btn-export" disabled onclick="doExport()">EXPORT</button>
+    </div>
+
+  </div><!-- /left-col -->
+
+  <!-- ── Right column (playback) ── -->
+  <div class="right-col">
+
+    <div class="playback-header">
+      <div class="playback-title">Playback</div>
+
+      <div class="playback-controls">
+        <button class="btn btn-play"    id="btn-play"    disabled onclick="playSession()">▶ PLAY</button>
+        <button class="btn btn-pause"   id="btn-pause"   disabled onclick="pauseSession()">⏸ PAUSE</button>
+        <button class="btn btn-pb-stop" id="btn-pb-stop" disabled onclick="stopPlayback()">■ STOP</button>
+        <select class="speed-select" id="speed-select">
+          <option value="0.25">0.25×</option>
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="2">2×</option>
+        </select>
+        <div class="pb-now-playing" id="pb-now-playing">No session selected</div>
+      </div>
+
+      <div class="scrub-row">
+        <span class="scrub-time" id="scrub-pos">0:00</span>
+        <div class="scrub-bar" id="scrub-bar" onclick="scrubClick(event)">
+          <div class="scrub-fill"   id="scrub-fill"   style="width:0%"></div>
+          <div class="scrub-handle" id="scrub-handle" style="left:0%"></div>
+        </div>
+        <span class="scrub-time" id="scrub-total">0:00</span>
+      </div>
+    </div>
+
+    <div class="session-list-wrap">
+      <div class="session-empty" id="session-empty">No recordings yet.<br>Press ● RECORD to capture tracker data.</div>
+      <div id="session-list"></div>
+    </div>
+
+  </div><!-- /right-col -->
+
+</div><!-- /main -->
+
+<!-- ── Status bar ── -->
+<div class="statusbar">
+  <div class="sb-item"><span>STREAM</span><span class="sb-val" id="sb-fps">— fps</span></div>
+  <div class="sb-item"><span>FRAMES</span><span class="sb-val" id="sb-frames">—</span></div>
+  <div class="sb-item"><span>TRACKERS</span><span class="sb-val" id="sb-trackers">0</span></div>
+  <div class="sb-sep"></div>
+  <span class="sb-msg" id="sb-msg"></span>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const WS_URL   = 'ws://localhost:8765';
+const HTTP_BASE = 'http://localhost:8080';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let ws          = null;
+let wsRetries   = 0;
+let latestPoses = {};    // serial → pose entry from WS
+let streamFps   = 0;
+let streamFrames = 0;
+
+let recording     = false;
+let recSessionId  = null;
+let recStartTime  = null;
+let recFrameCount = 0;
+let recByteEst    = 0;
+let recTimerInt   = null;
+
+let sessions      = [];       // from GET /recorder/sessions
+let selectedFile  = null;
+let exportFmt     = 'csv';
+
+let playState     = 'stopped';  // 'stopped' | 'playing' | 'paused'
+let playFrames    = [];
+let playIdx       = 0;
+let playTimer     = null;
+let playTotal     = 0;
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+function setConn(state) {
+  const dot  = document.getElementById('conn-dot');
+  const text = document.getElementById('conn-text');
+  dot.className = 'conn-dot ' + state;
+  const map = {
+    live:         ['LIVE',          'var(--green)'],
+    reconnecting: ['RECONNECTING…', 'var(--amber)'],
+    disconnected: ['DISCONNECTED',  'var(--muted)'],
+    waiting:      ['WAITING',       'var(--muted)'],
+  };
+  const [label, color] = map[state] || map.waiting;
+  text.textContent  = label;
+  text.style.color  = color;
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    wsRetries = 0;
+    setConn('live');
+  };
+
+  ws.onclose = () => {
+    setConn(wsRetries > 0 ? 'reconnecting' : 'disconnected');
+    wsRetries++;
+    setTimeout(connect, 2000);
+  };
+
+  ws.onerror = () => setConn('reconnecting');
+
+  ws.onmessage = e => {
+    let d;
+    try { d = JSON.parse(e.data); } catch { return; }
+
+    if (!d.type && d.meta !== undefined) {
+      latestPoses  = d;
+      streamFps    = d.meta?.fps ?? 0;
+      streamFrames++;
+
+      const activeCount = Object.keys(d).filter(k => k !== 'meta').length;
+      document.getElementById('sb-fps').textContent     = streamFps + ' fps';
+      document.getElementById('sb-frames').textContent  = streamFrames.toLocaleString();
+      document.getElementById('sb-trackers').textContent = activeCount;
+
+      if (recording) {
+        recFrameCount++;
+        recByteEst += JSON.stringify(d).length + 60;
+        document.getElementById('rec-frames').textContent   = recFrameCount.toLocaleString();
+        document.getElementById('rec-trackers').textContent = activeCount;
+        document.getElementById('rec-size').textContent     = fmtBytes(recByteEst);
+      }
+    }
+  };
+}
+
+// ── Recording ─────────────────────────────────────────────────────────────────
+async function startRecording() {
+  if (recording) return;
+  const label = document.getElementById('rec-label').value.trim() || 'session';
+
+  try {
+    const r = await fetch(HTTP_BASE + '/recorder/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label }),
+    });
+    const j = await r.json();
+    if (j.status !== 'ok') throw new Error(j.message || 'start failed');
+
+    recording     = true;
+    recSessionId  = j.session_id;
+    recStartTime  = Date.now();
+    recFrameCount = 0;
+    recByteEst    = 0;
+
+    document.getElementById('btn-record').classList.add('active');
+    document.getElementById('btn-record').disabled  = true;
+    document.getElementById('btn-stop-rec').disabled = false;
+    document.getElementById('rec-timer').classList.add('recording');
+    document.getElementById('rec-frames').classList.add('recording');
+
+    recTimerInt = setInterval(updateTimer, 500);
+    showMsg('Recording started — ' + label, 'ok');
+  } catch (err) {
+    showMsg('Error: ' + err.message, 'err');
+  }
+}
+
+async function stopRecording() {
+  if (!recording) return;
+
+  clearInterval(recTimerInt);
+  recording = false;
+
+  document.getElementById('btn-record').classList.remove('active');
+  document.getElementById('btn-record').disabled   = false;
+  document.getElementById('btn-stop-rec').disabled = true;
+  document.getElementById('rec-timer').classList.remove('recording');
+  document.getElementById('rec-frames').classList.remove('recording');
+
+  try {
+    const r = await fetch(HTTP_BASE + '/recorder/stop', { method: 'POST' });
+    const j = await r.json();
+    if (j.status !== 'ok') throw new Error(j.message || 'stop failed');
+    showMsg('Saved: ' + j.file + '  (' + j.frames + ' frames)', 'ok');
+    await refreshSessions();
+  } catch (err) {
+    showMsg('Error: ' + err.message, 'err');
+  }
+}
+
+function updateTimer() {
+  if (!recStartTime) return;
+  const s = Math.floor((Date.now() - recStartTime) / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  document.getElementById('rec-timer').textContent =
+    String(h).padStart(2,'0') + ':' +
+    String(m).padStart(2,'0') + ':' +
+    String(sec).padStart(2,'0');
+}
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+async function refreshSessions() {
+  try {
+    const r = await fetch(HTTP_BASE + '/recorder/sessions');
+    const j = await r.json();
+    sessions = j.sessions || [];
+    renderSessions();
+    populateExportSelect();
+  } catch { /* daemon not ready */ }
+}
+
+function renderSessions() {
+  const list  = document.getElementById('session-list');
+  const empty = document.getElementById('session-empty');
+  list.innerHTML = '';
+
+  if (!sessions.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  for (const s of sessions) {
+    const el = document.createElement('div');
+    el.className = 'session-item' +
+      (selectedFile === s.file ? ' selected' : '') +
+      (playState !== 'stopped' && selectedFile === s.file ? ' playing' : '');
+    el.onclick = () => selectSession(s.file);
+
+    const dur = fmtDuration(s.duration_s ?? 0);
+    const dt  = s.started_at ? new Date(s.started_at * 1000).toLocaleString() : '—';
+
+    el.innerHTML = `
+      <div class="si-top">
+        <div class="si-label">${esc(s.label || s.file)}</div>
+        <div class="si-duration">${dur}</div>
+      </div>
+      <div class="si-meta">
+        <span>${dt}</span>
+        <span><span class="hi">${s.frames ?? '—'}</span> frames</span>
+        <span><span class="hi">${s.trackers ?? '—'}</span> trackers</span>
+        <span>${esc(s.file)}</span>
+      </div>`;
+    list.appendChild(el);
+  }
+}
+
+function selectSession(file) {
+  selectedFile = file;
+  renderSessions();
+  document.getElementById('btn-play').disabled = false;
+  const s = sessions.find(x => x.file === file);
+  const label = s?.label || file;
+  document.getElementById('pb-now-playing').innerHTML =
+    'Selected: <span>' + esc(label) + '</span>';
+  document.getElementById('export-select').value = file;
+  document.getElementById('btn-export').disabled  = false;
+
+  const dur = s?.duration_s ?? 0;
+  document.getElementById('scrub-total').textContent = fmtDuration(dur);
+  document.getElementById('scrub-pos').textContent   = '0:00';
+  setScrub(0);
+}
+
+function populateExportSelect() {
+  const sel = document.getElementById('export-select');
+  const cur = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  for (const s of sessions) {
+    const opt = document.createElement('option');
+    opt.value       = s.file;
+    opt.textContent = (s.label || s.file) + '  [' + fmtDuration(s.duration_s ?? 0) + ']';
+    sel.appendChild(opt);
+  }
+  if (cur) sel.value = cur;
+  document.getElementById('btn-export').disabled = !sel.value;
+}
+
+document.getElementById('export-select').addEventListener('change', e => {
+  document.getElementById('btn-export').disabled = !e.target.value;
+});
+
+// ── Playback ──────────────────────────────────────────────────────────────────
+async function playSession() {
+  if (!selectedFile) return;
+  if (playState === 'paused') {
+    playState = 'playing';
+    scheduleNextFrame();
+    document.getElementById('btn-pause').disabled = false;
+    return;
+  }
+
+  try {
+    const speed = parseFloat(document.getElementById('speed-select').value);
+    const r = await fetch(HTTP_BASE + '/recorder/play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: selectedFile, speed }),
+    });
+    const j = await r.json();
+    if (j.status !== 'ok') throw new Error(j.message || 'play failed');
+
+    playFrames = j.frames || [];
+    playTotal  = j.duration_s ?? 0;
+    playIdx    = 0;
+    playState  = 'playing';
+
+    document.getElementById('btn-play').disabled    = true;
+    document.getElementById('btn-pause').disabled   = false;
+    document.getElementById('btn-pb-stop').disabled = false;
+    document.getElementById('scrub-total').textContent = fmtDuration(playTotal);
+
+    renderSessions();
+    showMsg('Playing: ' + selectedFile, 'ok');
+    scheduleNextFrame();
+  } catch (err) {
+    showMsg('Error: ' + err.message, 'err');
+  }
+}
+
+function scheduleNextFrame() {
+  if (playState !== 'playing' || !playFrames.length) return;
+  if (playIdx >= playFrames.length) {
+    // loop back
+    playIdx = 0;
+  }
+
+  const speed   = parseFloat(document.getElementById('speed-select').value);
+  const frame   = playFrames[playIdx];
+  const next    = playFrames[playIdx + 1];
+  const delay   = next ? Math.max(0, (next.timestamp - frame.timestamp) * 1000 / speed) : 100;
+
+  playTimer = setTimeout(() => {
+    if (playState !== 'playing') return;
+
+    // Update scrub
+    const progress = playTotal > 0 ? (frame.timestamp - playFrames[0].timestamp) / playTotal : 0;
+    const clipped  = Math.min(1, Math.max(0, progress));
+    setScrub(clipped);
+    const elapsed = frame.timestamp - playFrames[0].timestamp;
+    document.getElementById('scrub-pos').textContent = fmtDuration(elapsed);
+
+    playIdx++;
+    if (playIdx >= playFrames.length) {
+      playIdx = 0;
+      document.getElementById('scrub-pos').textContent = '0:00';
+      setScrub(0);
+    }
+    scheduleNextFrame();
+  }, delay);
+}
+
+function pauseSession() {
+  if (playState === 'playing') {
+    playState = 'paused';
+    clearTimeout(playTimer);
+    document.getElementById('btn-play').disabled  = false;
+    document.getElementById('btn-pause').disabled = true;
+    showMsg('Paused', 'ok');
+  }
+}
+
+async function stopPlayback() {
+  clearTimeout(playTimer);
+  playState  = 'stopped';
+  playFrames = [];
+  playIdx    = 0;
+
+  document.getElementById('btn-play').disabled    = !selectedFile;
+  document.getElementById('btn-pause').disabled   = true;
+  document.getElementById('btn-pb-stop').disabled = true;
+  setScrub(0);
+  document.getElementById('scrub-pos').textContent = '0:00';
+
+  try {
+    await fetch(HTTP_BASE + '/recorder/stop_playback', { method: 'POST' });
+  } catch { /* ignore */ }
+
+  renderSessions();
+  showMsg('Playback stopped — live stream restored', 'ok');
+}
+
+function setScrub(frac) {
+  const pct = (frac * 100).toFixed(1) + '%';
+  document.getElementById('scrub-fill').style.width   = pct;
+  document.getElementById('scrub-handle').style.left  = pct;
+}
+
+function scrubClick(e) {
+  if (!playFrames.length) return;
+  const bar   = document.getElementById('scrub-bar');
+  const rect  = bar.getBoundingClientRect();
+  const frac  = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  playIdx     = Math.floor(frac * playFrames.length);
+  setScrub(frac);
+  const elapsed = playTotal * frac;
+  document.getElementById('scrub-pos').textContent = fmtDuration(elapsed);
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function selectFmt(fmt) {
+  exportFmt = fmt;
+  document.getElementById('fmt-csv').classList.toggle('selected',  fmt === 'csv');
+  document.getElementById('fmt-json').classList.toggle('selected', fmt === 'json');
+}
+
+async function doExport() {
+  const file = document.getElementById('export-select').value;
+  if (!file) return;
+
+  document.getElementById('btn-export').disabled = true;
+  showMsg('Exporting…', 'ok');
+
+  try {
+    const r = await fetch(HTTP_BASE + '/recorder/export/' + exportFmt, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file }),
+    });
+    if (!r.ok) {
+      const j = await r.json();
+      throw new Error(j.message || 'export failed');
+    }
+    const blob     = await r.blob();
+    const basename = file.replace(/\.vut$/, '');
+    const ext      = exportFmt === 'csv' ? '.csv' : '.json';
+    const a        = document.createElement('a');
+    a.href         = URL.createObjectURL(blob);
+    a.download     = basename + ext;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showMsg('Export ready: ' + basename + ext, 'ok');
+  } catch (err) {
+    showMsg('Export error: ' + err.message, 'err');
+  } finally {
+    document.getElementById('btn-export').disabled = false;
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtDuration(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  if (h > 0) return h + ':' + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+  return m + ':' + String(sec).padStart(2,'0');
+}
+
+function fmtBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(2) + ' MB';
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showMsg(msg, cls) {
+  const el = document.getElementById('sb-msg');
+  el.textContent  = msg;
+  el.className    = 'sb-msg ' + (cls || '');
+  clearTimeout(showMsg._t);
+  showMsg._t = setTimeout(() => { el.textContent = ''; el.className = 'sb-msg'; }, 6000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+connect();
+refreshSessions();
+setInterval(refreshSessions, 10000);
+</script>
+</body>
+</html>

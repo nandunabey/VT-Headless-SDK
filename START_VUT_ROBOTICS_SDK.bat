@@ -58,6 +58,11 @@ echo  [OK] Clean
 
 echo.
 
+:: ── Ensure recordings directory exists ───────────────────────────────────────
+
+IF NOT EXIST "%~dp0recordings\" mkdir "%~dp0recordings\"
+echo  [OK] recordings\ directory ready
+
 :: ── Start daemon (WebSocket :8765 + HTTP :8080) ──────────────────────────────
 
 echo  Starting tracker daemon (ws://localhost:8765 + http://localhost:8080)...
