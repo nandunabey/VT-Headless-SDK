@@ -102,17 +102,17 @@ asyncio.run(receive_poses())
 
 ## Screenshots
 
-### vut-status — health check
-![vut-status](docs/screenshots/vut-status.png)
-*All systems operational with active trackers*
+### Robotics visualiser — 5-tracker top-down view
+![Robotics visualiser](docs/screenshots/robotics-visualiser.png)
+*5-tracker top-down view with distance lines, 63fps*
 
-### Robotics visualiser — top-down view
-![Robotics mode](docs/screenshots/robotics-mode.png)
-*Live 6DoF tracking, multiple trackers, 64fps*
+### Tracker dashboard — live telemetry
+![Tracker dashboard](docs/screenshots/tracker-dashboard.png)
+*Live tracker dashboard — serial, pose, battery, tracking status*
 
-### Body tracking visualiser
-![Body mode](docs/screenshots/body-mode.png)
-*5-tracker body tracking with inferred skeleton joints*
+### Tracker daemon — WebSocket stream
+![Tracker daemon](docs/screenshots/tracker-daemon.png)
+*VUT Tracker Daemon — serial-keyed pose stream at 64Hz*
 
 ---
 
@@ -130,17 +130,47 @@ asyncio.run(receive_poses())
 
 ## WebSocket API
 
-Poses are broadcast as JSON at approximately 60–90 fps:
+Broadcast rate is set with `--fps` (default 30, start script uses 60):
+
+| `--fps` | Interval | Latency estimate | Use case |
+|---------|----------|-----------------|----------|
+| 30      | ~33 ms   | ~33 ms          | Body tracking, low CPU |
+| 60      | ~17 ms   | ~17 ms          | Robotics (recommended) |
+| 100     | ~10 ms   | ~10 ms          | Minimum latency, higher CPU |
+
+Each broadcast is a flat JSON dict keyed by hardware serial number
+(stable across SteamVR restarts), plus a `meta` block:
 
 ```json
 {
-  "tracker_0": {
-    "position": {"x": 0.12, "y": 0.95, "z": -0.34},
-    "rotation": {"w": 0.99, "x": 0.01, "y": 0.05, "z": 0.02},
-    "timestamp": 1715000000.123
+  "41-A33204726": {
+    "position":      {"x": 0.12,  "y": 0.95,  "z": -0.34},
+    "rotation":      {"w": 0.99,  "x": 0.01,  "y": 0.05,  "z": 0.02},
+    "timestamp":     1715000000.123,
+    "battery_pct":   46,
+    "session_index": 1,
+    "model":         "VIVE Ultimate Tracker 1"
+  },
+  "41-A33200148": {
+    "position":      {"x": -0.05, "y": 0.10,  "z": 0.15},
+    "rotation":      {"w": 1.0,   "x": 0.0,   "y": 0.0,   "z": 0.0},
+    "timestamp":     1715000000.123,
+    "battery_pct":   null,
+    "session_index": 2,
+    "model":         "VIVE Ultimate Tracker 3"
+  },
+  "meta": {
+    "fps":           60,
+    "latency_ms":    17,
+    "tracker_count": 2
   }
 }
 ```
+
+`battery_pct`: integer 0–100, or `null` if the property read failed.
+`session_index` and `model` are informational — never use them as stable
+identifiers. Always key on the serial number (top-level dict key).
+`meta` is not a tracker entry — skip it when iterating poses.
 
 ---
 
@@ -179,7 +209,7 @@ https://github.com/[username]/vut-skeleton
 ## Author
 
 Nandun Abeynayake
-Head of Product ANZ, HTC VIVE
+github.com/nandunabey
 
 ---
 
