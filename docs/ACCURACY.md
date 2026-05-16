@@ -44,15 +44,32 @@ Anecdotal observation from SDK development:
 Headless mode accuracy validation is a planned feature 
 of the research/benchmark tool (v0.3).
 
-## Noise Floor (SDK measurement)
+## Noise Floor (measured via VUT Headless SDK)
 
-From live session data captured via this SDK:
-- Stationary tracker position variance: ~0.1mm
-- Measured at 60Hz broadcast rate
-- Single tracker, standard tracking mode
+Methodology: single tracker placed on rigid stationary 
+surface, recorded for 65 seconds at 64.1Hz, 
+4,171 frames captured.
 
-This represents the noise floor of the system at rest.
-Movement accuracy will vary with speed — see He et al. above.
+Tracker serial: 41-A33204726
+Measurement date: 17 May 2026
+SDK version: v0.1.0-alpha
+Mode: Standard tracking, headless (VRApplication_Background)
+
+Results:
+| Axis | Std Dev | Peak Range |
+|------|---------|------------|
+| X    | 0.17mm  | 0.90mm     |
+| Y    | 0.16mm  | 0.90mm     |
+| Z    | 0.20mm  | 1.00mm     |
+| 3D RMS | 0.30mm | — |
+
+This represents the noise floor of the SDK in headless 
+mode — i.e. the minimum measurable position uncertainty 
+for a stationary object.
+
+Note: this is a single-tracker measurement under 
+controlled indoor conditions. Results may vary with 
+environment, lighting, and tracker orientation.
 
 ## Comparison to other systems
 
