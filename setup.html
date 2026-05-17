@@ -220,6 +220,16 @@
   button.btn:hover { border-color: #444; color: #ccc; }
   button.btn.primary { border-color: #00ffcc; color: #00ffcc; }
   button.btn.primary:hover { background: rgba(0,255,204,.06); }
+
+  /* ── Banner stack ── */
+  #banner-stack { position: fixed; top: 44px; left: 0; right: 0; z-index: 1000; display: flex; flex-direction: column; pointer-events: none; }
+  .banner { display: flex; align-items: flex-start; gap: 12px; padding: 12px 20px; font-size: 14px; font-weight: bold; color: #ffffff; pointer-events: all; line-height: 1.5; white-space: pre-wrap; }
+  .banner.error   { background: #ff4444; }
+  .banner.warning { background: #ffaa00; }
+  .banner.success { background: #00aa66; }
+  .banner-msg  { flex: 1; }
+  .banner-close { background: none; border: none; color: #fff; font-size: 18px; line-height: 1; cursor: pointer; padding: 0; opacity: .8; flex-shrink: 0; font-weight: bold; }
+  .banner-close:hover { opacity: 1; }
 </style>
 </head>
 <body>
@@ -354,11 +364,22 @@ function updateCount() {
     n + ' tracker' + (n !== 1 ? 's' : '') + ' detected';
 }
 
-function showBanner(msg, cls) {
-  const b = document.getElementById('status-banner');
-  b.textContent   = msg;
-  b.className     = cls;
-  b.style.display = 'block';
+function showBanner(msg, type) {
+  const stack = document.getElementById('banner-stack');
+  const el    = document.createElement('div');
+  el.className = 'banner ' + type;
+  const msgEl = document.createElement('div');
+  msgEl.className  = 'banner-msg';
+  msgEl.textContent = msg;
+  const close = document.createElement('button');
+  close.className  = 'banner-close';
+  close.textContent = '✕';
+  el.appendChild(msgEl);
+  el.appendChild(close);
+  stack.appendChild(el);
+  const dur   = type === 'success' ? 3000 : 8000;
+  const timer = setTimeout(() => el.remove(), dur);
+  close.onclick = () => { clearTimeout(timer); el.remove(); };
 }
 
 function doSkip() {
@@ -389,7 +410,7 @@ async function doSave() {
     if (!confirm('Warning: two or more trackers share the same role.\nSave anyway?')) return;
   }
 
-  showBanner('Saving…', 'warn');
+  showBanner('Saving…', 'warning');
   try {
     const res  = await fetch('http://localhost:8080/save-roles', {
       method:  'POST',
@@ -398,13 +419,13 @@ async function doSave() {
     });
     const data = await res.json();
     if (data.status === 'ok') {
-      showBanner('Roles saved — opening dashboard…', 'ok');
+      showBanner('Roles saved — opening dashboard…', 'success');
       setTimeout(() => { window.location.href = 'http://localhost:8080/visualiser.html'; }, 2000);
     } else {
-      showBanner('Error: ' + (data.message || 'unknown'), 'err');
+      showBanner('Error: ' + (data.message || 'unknown'), 'error');
     }
   } catch (e) {
-    showBanner('Save failed — is the daemon running?  ' + e.message, 'err');
+    showBanner('Save failed — is the daemon running?\n' + e.message, 'error');
   }
 }
 
@@ -456,5 +477,6 @@ function connect() {
 
 connect();
 </script>
+<div id="banner-stack"></div>
 </body>
 </html>

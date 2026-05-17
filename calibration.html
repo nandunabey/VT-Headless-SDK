@@ -179,6 +179,16 @@
   .sb-msg  { transition: color .3s; }
   .sb-msg.ok  { color: var(--green); }
   .sb-msg.err { color: var(--red); }
+
+  /* ── Banner stack ── */
+  #banner-stack { position: fixed; top: 46px; left: 0; right: 0; z-index: 1000; display: flex; flex-direction: column; pointer-events: none; }
+  .banner { display: flex; align-items: flex-start; gap: 12px; padding: 12px 20px; font-size: 14px; font-weight: bold; color: #ffffff; pointer-events: all; line-height: 1.5; white-space: pre-wrap; }
+  .banner.error   { background: #ff4444; }
+  .banner.warning { background: #ffaa00; }
+  .banner.success { background: #00aa66; }
+  .banner-msg  { flex: 1; }
+  .banner-close { background: none; border: none; color: #fff; font-size: 18px; line-height: 1; cursor: pointer; padding: 0; opacity: .8; flex-shrink: 0; font-weight: bold; }
+  .banner-close:hover { opacity: 1; }
 </style>
 </head>
 <body>
@@ -304,11 +314,33 @@ async function persistAnchors() {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(anchors),
     });
+    if (!r.ok) {
+      let body = '';
+      try { body = await r.text(); } catch {}
+      showBanner(
+        `Save failed (HTTP ${r.status})` +
+        (body ? `\nResponse: ${body}` : '') +
+        '\nCheck that START_VUT_ROBOTICS_SDK.bat is running',
+        'error'
+      );
+      renderAll();
+      return;
+    }
     const j = await r.json();
-    if (j.status !== 'ok') throw new Error(j.message || 'save failed');
-    showMsg('Saved anchors.json', 'ok');
+    if (j.status !== 'ok') {
+      showBanner(
+        `Save failed: ${j.message || 'unknown error'}\nCheck that START_VUT_ROBOTICS_SDK.bat is running`,
+        'error'
+      );
+      renderAll();
+      return;
+    }
+    showBanner('Saved anchors.json', 'success');
   } catch (e) {
-    showMsg('Save error: ' + e.message, 'err');
+    showBanner(
+      `Save error: ${e.message}\nCheck that START_VUT_ROBOTICS_SDK.bat is running`,
+      'error'
+    );
   }
   renderAll();
 }
@@ -606,16 +638,31 @@ function esc(s) {
 function q(s) {
   return JSON.stringify(s);
 }
+function showBanner(msg, type) {
+  const stack = document.getElementById('banner-stack');
+  const el    = document.createElement('div');
+  el.className = 'banner ' + type;
+  const msgEl = document.createElement('div');
+  msgEl.className  = 'banner-msg';
+  msgEl.textContent = msg;
+  const close = document.createElement('button');
+  close.className  = 'banner-close';
+  close.textContent = '✕';
+  el.appendChild(msgEl);
+  el.appendChild(close);
+  stack.appendChild(el);
+  const dur   = type === 'success' ? 3000 : 8000;
+  const timer = setTimeout(() => el.remove(), dur);
+  close.onclick = () => { clearTimeout(timer); el.remove(); };
+}
 function showMsg(msg, cls) {
-  const el = document.getElementById('sb-msg');
-  el.textContent = msg; el.className = 'sb-msg ' + cls;
-  clearTimeout(showMsg._t);
-  showMsg._t = setTimeout(() => { el.textContent = ''; el.className = 'sb-msg'; }, 4000);
+  showBanner(msg, cls === 'ok' ? 'success' : cls === 'err' ? 'error' : 'warning');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 loadAnchors();
 connect();
 </script>
+<div id="banner-stack"></div>
 </body>
 </html>
