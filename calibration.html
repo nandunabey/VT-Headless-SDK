@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIVE Tracker — Calibration</title>
+<style>
+  :root {
+    --bg:     #0a0a0a;
+    --panel:  #111111;
+    --border: #1e1e1e;
+    --cyan:   #00ffcc;
+    --amber:  #ffaa00;
+    --red:    #ff4444;
+    --green:  #00e676;
+    --text:   #cccccc;
+    --muted:  #888888;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: monospace;
+    height: 100vh;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: 46px 1fr 30px;
+    grid-template-columns: 320px 1fr;
+  }
+
+  /* ── Header ── */
+  header {
+    grid-column: 1 / -1;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 18px; gap: 14px;
+  }
+  .h-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text); }
+  .h-title em { color: var(--cyan); font-style: normal; }
+  .h-sep { flex: 1; }
+  .conn-status { display: flex; align-items: center; gap: 6px; font-size: 10px; }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; transition: background .3s; }
+  .conn-dot.live         { background: var(--green); box-shadow: 0 0 5px var(--green); animation: blink 2s infinite; }
+  .conn-dot.reconnecting { background: var(--amber); animation: blink .5s infinite; }
+  .conn-dot.disconnected { background: var(--red); }
+  .conn-dot.waiting      { background: var(--muted); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .h-back {
+    font-size: 9px; color: var(--muted); text-decoration: none;
+    letter-spacing: 1px; padding: 4px 8px;
+    border: 1px solid var(--border); border-radius: 2px;
+    transition: color .2s, border-color .2s;
+  }
+  .h-back:hover { color: var(--cyan); border-color: var(--cyan); }
+
+  /* ── Columns ── */
+  .left-col {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .right-col { display: flex; flex-direction: column; overflow: hidden; }
+  .col-scroll { flex: 1; overflow-y: auto; }
+  .col-scroll::-webkit-scrollbar { width: 3px; }
+  .col-scroll::-webkit-scrollbar-thumb { background: var(--border); }
+
+  /* ── Sections ── */
+  .section { padding: 13px 16px; border-bottom: 1px solid var(--border); }
+  .section-title {
+    font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+    color: #ffffff; margin-bottom: 12px;
+  }
+  .sub-label {
+    font-size: 9px; color: var(--muted); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 6px; margin-top: 2px;
+  }
+
+  /* ── Origin badge ── */
+  .origin-badge {
+    font-size: 10px; letter-spacing: .5px; padding: 6px 10px;
+    border-radius: 2px; margin-bottom: 10px; border: 1px solid;
+  }
+  .origin-badge.default { color: var(--muted); border-color: var(--border); }
+  .origin-badge.custom  { color: var(--cyan);  border-color: var(--cyan); background: rgba(0,255,204,.04); }
+
+  .origin-coords {
+    font-size: 10px; color: var(--muted); margin-bottom: 10px; line-height: 1.7;
+  }
+  .origin-coords b { color: var(--text); font-weight: 500; }
+
+  /* ── Tracker rows (origin panel) ── */
+  .trk-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 10px;
+  }
+  .trk-row:last-child { border-bottom: none; }
+  .trk-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .trk-name { color: #fff; width: 46px; flex-shrink: 0; }
+  .trk-xyz  { color: var(--text); flex: 1; font-size: 9px; }
+  .trk-row.lost { opacity: .45; }
+
+  /* ── Buttons ── */
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+  .btn {
+    font-family: monospace; font-size: 10px; letter-spacing: 1px;
+    padding: 7px 12px; border-radius: 2px; cursor: pointer;
+    background: transparent; white-space: nowrap;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .btn:disabled { opacity: .35; cursor: default; }
+  .btn-primary  { border: 1px solid var(--cyan);   color: var(--cyan); }
+  .btn-primary:hover:not(:disabled)  { background: rgba(0,255,204,.1); }
+  .btn-secondary { border: 1px solid var(--border); color: var(--muted); }
+  .btn-secondary:hover:not(:disabled) { border-color: #555; color: var(--text); background: rgba(255,255,255,.03); }
+  .btn-icon {
+    font-size: 11px; padding: 3px 7px;
+    border: 1px solid var(--border); color: var(--muted);
+    background: transparent; cursor: pointer; border-radius: 2px;
+    transition: color .15s, border-color .15s;
+  }
+  .btn-icon:hover { color: var(--text); border-color: #555; }
+
+  /* ── Note input ── */
+  .note-row { margin: 10px 0 0; }
+  .form-input {
+    background: #0d0d0d; border: 1px solid var(--border);
+    border-radius: 2px; color: var(--text); font-family: monospace;
+    font-size: 10px; padding: 5px 8px; outline: none;
+    transition: border-color .15s; width: 100%;
+  }
+  .form-input:focus { border-color: var(--cyan); }
+  .form-input::placeholder { color: var(--muted); }
+
+  /* ── Anchor / zone list rows ── */
+  .anchor-row, .zone-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 10px;
+  }
+  .anchor-row:last-child, .zone-row:last-child { border-bottom: none; }
+  .anchor-name { color: var(--cyan);  width: 120px; flex-shrink: 0; letter-spacing: .5px; word-break: break-all; }
+  .zone-name   { color: var(--amber); width: 120px; flex-shrink: 0; letter-spacing: .5px; word-break: break-all; }
+  .anchor-detail { flex: 1; color: var(--text); font-size: 9px; line-height: 1.7; }
+  .anchor-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+  /* ── Add forms ── */
+  .add-form {
+    display: flex; gap: 6px; align-items: center;
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .form-select {
+    background: #0d0d0d; border: 1px solid var(--border);
+    border-radius: 2px; color: var(--text); font-family: monospace;
+    font-size: 10px; padding: 5px 8px; outline: none; cursor: pointer;
+  }
+  .form-select:focus { border-color: var(--cyan); }
+  .inp-name   { flex: 1; min-width: 90px; }
+  .inp-radius { width: 68px; text-align: right; }
+
+  /* ── Empty states ── */
+  .empty { font-size: 10px; color: var(--muted); padding: 6px 0; }
+
+  /* ── Import / Export ── */
+  .ie-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* ── Status bar ── */
+  .statusbar {
+    grid-column: 1 / -1;
+    background: var(--panel); border-top: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 14px; gap: 16px;
+    font-size: 9px; color: var(--muted); letter-spacing: 1px;
+  }
+  .sb-item { display: flex; align-items: center; gap: 5px; }
+  .sb-v    { color: var(--text); font-weight: 500; }
+  .sb-sep  { flex: 1; }
+  .sb-msg  { transition: color .3s; }
+  .sb-msg.ok  { color: var(--green); }
+  .sb-msg.err { color: var(--red); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-title">VIVE <em>TRACKER</em> — CALIBRATION</div>
+  <div class="h-sep"></div>
+  <div class="conn-status">
+    <div class="conn-dot waiting" id="conn-dot"></div>
+    <span id="conn-text" style="color:var(--muted)">WAITING</span>
+    <span style="color:#444;font-size:9px">&nbsp;ws://localhost:8765</span>
+  </div>
+  <a href="http://localhost:8080/visualiser.html" class="h-back">← VISUALISER</a>
+</header>
+
+<!-- ── Left: ORIGIN ── -->
+<div class="left-col">
+  <div class="col-scroll">
+    <div class="section">
+      <div class="section-title">Origin</div>
+      <div id="origin-badge" class="origin-badge default">SteamVR default (0, 0, 0)</div>
+      <div id="origin-coords" class="origin-coords" style="display:none"></div>
+
+      <div class="sub-label">Active Trackers</div>
+      <div id="trk-list"><div class="empty">Waiting for tracker data…</div></div>
+
+      <div class="note-row">
+        <input class="form-input" id="origin-note" type="text"
+               placeholder="Note (optional, e.g. table centre)" maxlength="64">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary"   id="btn-set-origin" disabled onclick="setOrigin()">SET ORIGIN</button>
+        <button class="btn btn-secondary" onclick="resetOrigin()">RESET</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Right: ANCHORS + ZONES + IMPORT/EXPORT ── -->
+<div class="right-col">
+  <div class="col-scroll">
+
+    <div class="section">
+      <div class="section-title">Anchors</div>
+      <div id="anchor-list"><div class="empty">No anchors saved yet.</div></div>
+
+      <div class="add-form">
+        <select class="form-select" id="anchor-tracker">
+          <option value="">— tracker —</option>
+        </select>
+        <input class="form-input inp-name" id="anchor-name" type="text"
+               placeholder="anchor_name" maxlength="48">
+        <button class="btn btn-primary" onclick="saveAnchor()">SAVE ANCHOR</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Zones</div>
+      <div id="zone-list"><div class="empty">No zones saved yet.</div></div>
+
+      <div class="add-form">
+        <input class="form-input inp-name" id="zone-name" type="text"
+               placeholder="zone_name" maxlength="48" style="min-width:90px">
+        <select class="form-select" id="zone-tracker">
+          <option value="">— centre —</option>
+        </select>
+        <input class="form-input inp-radius" id="zone-radius"
+               type="number" step="0.05" min="0.01" value="0.50">
+        <span style="font-size:9px;color:var(--muted)">m</span>
+        <button class="btn btn-primary" onclick="saveZone()">SAVE ZONE</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Import / Export</div>
+      <div class="ie-row">
+        <button class="btn btn-primary"   onclick="exportAnchors()">EXPORT anchors.json</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('file-import').click()">IMPORT anchors.json</button>
+        <input type="file" id="file-import" accept=".json" style="display:none" onchange="importAnchors(event)">
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="sb-item">STREAM  <span class="sb-v" id="sb-fps">— fps</span></div>
+  <div class="sb-item">ORIGIN  <span class="sb-v" id="sb-origin">DEFAULT</span></div>
+  <div class="sb-item">ANCHORS <span class="sb-v" id="sb-anchors">0</span></div>
+  <div class="sb-item">ZONES   <span class="sb-v" id="sb-zones">0</span></div>
+  <div class="sb-sep"></div>
+  <span class="sb-msg" id="sb-msg"></span>
+</div>
+
+<script>
+const WS_URL      = 'ws://localhost:8765';
+const HTTP_BASE   = 'http://localhost:8080';
+const SLOT_COLORS = ['#00ffcc', '#ffaa00', '#ff4444', '#4a9eff'];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const trackers = new Map(); // serial → {name, color, pos, status}
+let slotIndex  = 0;
+let frameCount = 0;
+
+let anchors = { origin: null, anchors: {}, zones: {} };
+
+// ── Load / save anchors ───────────────────────────────────────────────────────
+async function loadAnchors() {
+  try {
+    const r = await fetch(HTTP_BASE + '/calibration/anchors');
+    if (r.ok) {
+      const d = await r.json();
+      anchors = { origin: null, anchors: {}, zones: {}, ...d };
+    }
+  } catch { }
+  renderAll();
+}
+
+async function persistAnchors() {
+  try {
+    const r = await fetch(HTTP_BASE + '/calibration/save-anchors', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(anchors),
+    });
+    const j = await r.json();
+    if (j.status !== 'ok') throw new Error(j.message || 'save failed');
+    showMsg('Saved anchors.json', 'ok');
+  } catch (e) {
+    showMsg('Save error: ' + e.message, 'err');
+  }
+  renderAll();
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+let ws = null, wsRetries = 0;
+
+function setConn(s) {
+  const dot = document.getElementById('conn-dot');
+  const txt = document.getElementById('conn-text');
+  dot.className = 'conn-dot ' + s;
+  const m = {
+    live:         ['LIVE',          'var(--green)'],
+    reconnecting: ['RECONNECTING…', 'var(--amber)'],
+    disconnected: ['DISCONNECTED',  'var(--muted)'],
+    waiting:      ['WAITING',       'var(--muted)'],
+  };
+  const [l, c] = m[s] || m.waiting;
+  txt.textContent = l; txt.style.color = c;
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen  = () => { wsRetries = 0; setConn('live'); };
+  ws.onclose = () => {
+    setConn(wsRetries > 0 ? 'reconnecting' : 'disconnected');
+    wsRetries++; setTimeout(connect, 2000);
+  };
+  ws.onerror = () => setConn('reconnecting');
+  ws.onmessage = e => {
+    let d; try { d = JSON.parse(e.data); } catch { return; }
+    if (!d.type && d.meta !== undefined) ingestPoses(d);
+  };
+}
+
+function ingestPoses(d) {
+  frameCount++;
+  let changed = false;
+
+  for (const [serial, entry] of Object.entries(d)) {
+    if (serial === 'meta' || !entry?.position) continue;
+    let trk = trackers.get(serial);
+    if (!trk) {
+      const slot = slotIndex++;
+      trk = {
+        serial, slot,
+        color: SLOT_COLORS[slot % SLOT_COLORS.length],
+        name:  'VUT-' + String(slot + 1).padStart(2, '0'),
+        pos:   { x: 0, y: 0, z: 0 },
+        status: 'tracking',
+      };
+      trackers.set(serial, trk);
+      changed = true;
+    }
+    trk.pos = { x: entry.position.x, y: entry.position.y, z: entry.position.z };
+    if (trk.status !== 'tracking') { trk.status = 'tracking'; changed = true; }
+  }
+  for (const [serial, trk] of trackers) {
+    if (!d[serial] && trk.status !== 'lost') { trk.status = 'lost'; changed = true; }
+  }
+
+  const meta = d.meta || {};
+  document.getElementById('sb-fps').textContent = (meta.fps ?? '—') + ' fps';
+
+  if (changed) { renderTrackerList(); renderDropdowns(); }
+  else           updateTrackerPositions();
+
+  const hasActive = [...trackers.values()].some(t => t.status === 'tracking');
+  document.getElementById('btn-set-origin').disabled = !hasActive;
+}
+
+// ── Tracker list ──────────────────────────────────────────────────────────────
+function renderTrackerList() {
+  const el = document.getElementById('trk-list');
+  if (!trackers.size) { el.innerHTML = '<div class="empty">Waiting for tracker data…</div>'; return; }
+  el.innerHTML = '';
+  for (const [serial, trk] of trackers) {
+    const row = document.createElement('div');
+    row.className = 'trk-row' + (trk.status === 'lost' ? ' lost' : '');
+    row.innerHTML = `
+      <div class="trk-dot" style="background:${trk.color};box-shadow:0 0 4px ${trk.color}88"></div>
+      <div class="trk-name">${trk.name}</div>
+      <div class="trk-xyz" id="tpos-${serial}">${fmtXYZ(trk.pos)}</div>`;
+    el.appendChild(row);
+  }
+}
+
+function updateTrackerPositions() {
+  for (const [serial, trk] of trackers) {
+    const el = document.getElementById('tpos-' + serial);
+    if (el) el.textContent = fmtXYZ(trk.pos);
+  }
+}
+
+function renderDropdowns() {
+  for (const id of ['anchor-tracker', 'zone-tracker']) {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    sel.innerHTML = id === 'anchor-tracker'
+      ? '<option value="">— tracker —</option>'
+      : '<option value="">— centre —</option>';
+    for (const [serial, trk] of trackers) {
+      if (trk.status !== 'tracking') continue;
+      const opt = document.createElement('option');
+      opt.value = serial;
+      opt.textContent = trk.name + '  (' + serial.slice(-8) + ')';
+      sel.appendChild(opt);
+    }
+    if (cur && trackers.has(cur)) sel.value = cur;
+  }
+}
+
+// ── Origin ────────────────────────────────────────────────────────────────────
+function setOrigin() {
+  const active = [...trackers.values()].filter(t => t.status === 'tracking');
+  if (!active.length) { showMsg('No active trackers', 'err'); return; }
+  const x = active.reduce((s, t) => s + t.pos.x, 0) / active.length;
+  const y = active.reduce((s, t) => s + t.pos.y, 0) / active.length;
+  const z = active.reduce((s, t) => s + t.pos.z, 0) / active.length;
+  const note = document.getElementById('origin-note').value.trim();
+  anchors.origin = {
+    x: +x.toFixed(6), y: +y.toFixed(6), z: +z.toFixed(6),
+    set_at: new Date().toISOString(),
+    ...(note ? { note } : {}),
+  };
+  persistAnchors();
+}
+
+function resetOrigin() {
+  anchors.origin = null;
+  persistAnchors();
+}
+
+function renderOrigin() {
+  const badge  = document.getElementById('origin-badge');
+  const coords = document.getElementById('origin-coords');
+  const sb     = document.getElementById('sb-origin');
+  if (!anchors.origin) {
+    badge.className   = 'origin-badge default';
+    badge.textContent = 'SteamVR default (0, 0, 0)';
+    coords.style.display = 'none';
+    sb.textContent = 'DEFAULT';
+  } else {
+    const o = anchors.origin;
+    badge.className   = 'origin-badge custom';
+    badge.textContent = 'Custom — ' + new Date(o.set_at).toLocaleString();
+    coords.style.display = 'block';
+    coords.innerHTML =
+      `X: <b>${o.x.toFixed(4)}</b>&nbsp; Y: <b>${o.y.toFixed(4)}</b>&nbsp; Z: <b>${o.z.toFixed(4)}</b>` +
+      (o.note ? `<br><span style="color:#666;font-size:9px">${esc(o.note)}</span>` : '');
+    sb.textContent = 'CUSTOM';
+  }
+}
+
+// ── Anchors ───────────────────────────────────────────────────────────────────
+function saveAnchor() {
+  const serial = document.getElementById('anchor-tracker').value;
+  const name   = sanitizeName(document.getElementById('anchor-name').value);
+  if (!name)   { showMsg('Enter a valid anchor name', 'err'); return; }
+  if (!serial) { showMsg('Select a tracker', 'err'); return; }
+  const trk = trackers.get(serial);
+  if (!trk || trk.status !== 'tracking') { showMsg('Tracker not tracking', 'err'); return; }
+  anchors.anchors[name] = {
+    x: +trk.pos.x.toFixed(6), y: +trk.pos.y.toFixed(6), z: +trk.pos.z.toFixed(6),
+    set_at: new Date().toISOString(),
+  };
+  document.getElementById('anchor-name').value = '';
+  persistAnchors();
+}
+
+function deleteAnchor(name) {
+  delete anchors.anchors[name];
+  persistAnchors();
+}
+
+function copyAnchor(name) {
+  const a = anchors.anchors[name];
+  navigator.clipboard.writeText(
+    `x: ${a.x.toFixed(4)}, y: ${a.y.toFixed(4)}, z: ${a.z.toFixed(4)}`
+  ).then(() => showMsg('Copied ' + name, 'ok'));
+}
+
+function renderAnchorList() {
+  const el   = document.getElementById('anchor-list');
+  const keys = Object.keys(anchors.anchors || {});
+  document.getElementById('sb-anchors').textContent = keys.length;
+  if (!keys.length) { el.innerHTML = '<div class="empty">No anchors saved yet.</div>'; return; }
+  el.innerHTML = keys.map(name => {
+    const a  = anchors.anchors[name];
+    const dt = a.set_at ? `<br><span style="color:#444;font-size:8px">${new Date(a.set_at).toLocaleString()}</span>` : '';
+    return `<div class="anchor-row">
+      <div class="anchor-name">${esc(name)}</div>
+      <div class="anchor-detail">
+        X: ${fmtCoord(a.x)}&nbsp; Y: ${fmtCoord(a.y)}&nbsp; Z: ${fmtCoord(a.z)}${dt}
+      </div>
+      <div class="anchor-actions">
+        <button class="btn-icon" onclick="copyAnchor(${q(name)})" title="Copy">📋</button>
+        <button class="btn-icon" onclick="deleteAnchor(${q(name)})" title="Delete">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Zones ─────────────────────────────────────────────────────────────────────
+function saveZone() {
+  const serial  = document.getElementById('zone-tracker').value;
+  const name    = sanitizeName(document.getElementById('zone-name').value);
+  const radius  = parseFloat(document.getElementById('zone-radius').value);
+  if (!name)                     { showMsg('Enter a valid zone name', 'err'); return; }
+  if (!serial)                   { showMsg('Select a centre tracker', 'err'); return; }
+  if (isNaN(radius) || radius <= 0) { showMsg('Enter a valid radius > 0', 'err'); return; }
+  const trk = trackers.get(serial);
+  if (!trk || trk.status !== 'tracking') { showMsg('Tracker not tracking', 'err'); return; }
+  anchors.zones = anchors.zones || {};
+  anchors.zones[name] = {
+    cx: +trk.pos.x.toFixed(6), cy: +trk.pos.y.toFixed(6), cz: +trk.pos.z.toFixed(6),
+    radius_m: +radius.toFixed(3),
+    set_at:   new Date().toISOString(),
+  };
+  document.getElementById('zone-name').value = '';
+  persistAnchors();
+}
+
+function deleteZone(name) {
+  delete anchors.zones[name];
+  persistAnchors();
+}
+
+function renderZoneList() {
+  const el   = document.getElementById('zone-list');
+  const zones = anchors.zones || {};
+  const keys = Object.keys(zones);
+  document.getElementById('sb-zones').textContent = keys.length;
+  if (!keys.length) { el.innerHTML = '<div class="empty">No zones saved yet.</div>'; return; }
+  el.innerHTML = keys.map(name => {
+    const z  = zones[name];
+    const dt = z.set_at ? `<br><span style="color:#444;font-size:8px">${new Date(z.set_at).toLocaleString()}</span>` : '';
+    return `<div class="zone-row">
+      <div class="zone-name">${esc(name)}</div>
+      <div class="anchor-detail">
+        centre=(${fmtCoord(z.cx)}, ${fmtCoord(z.cy)}, ${fmtCoord(z.cz)})&nbsp;
+        r=${z.radius_m.toFixed(3)}m${dt}
+      </div>
+      <div class="anchor-actions">
+        <button class="btn-icon" onclick="deleteZone(${q(name)})" title="Delete">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Import / Export ───────────────────────────────────────────────────────────
+function exportAnchors() {
+  const a = document.createElement('a');
+  a.href     = URL.createObjectURL(new Blob([JSON.stringify(anchors, null, 2)], { type: 'application/json' }));
+  a.download = 'anchors.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  showMsg('Exported anchors.json', 'ok');
+}
+
+function importAnchors(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      anchors = { origin: null, anchors: {}, zones: {}, ...JSON.parse(ev.target.result) };
+      persistAnchors();
+      showMsg('Imported ' + file.name, 'ok');
+    } catch { showMsg('Invalid JSON file', 'err'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── Render all ────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderOrigin();
+  renderAnchorList();
+  renderZoneList();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function sanitizeName(s) {
+  return s.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '');
+}
+function fmtXYZ(p) {
+  return `${fmtCoord(p.x)}  ${fmtCoord(p.y)}  ${fmtCoord(p.z)}`;
+}
+function fmtCoord(v) {
+  return (v >= 0 ? '+' : '') + v.toFixed(3) + 'm';
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function q(s) {
+  return JSON.stringify(s);
+}
+function showMsg(msg, cls) {
+  const el = document.getElementById('sb-msg');
+  el.textContent = msg; el.className = 'sb-msg ' + cls;
+  clearTimeout(showMsg._t);
+  showMsg._t = setTimeout(() => { el.textContent = ''; el.className = 'sb-msg'; }, 4000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadAnchors();
+connect();
+</script>
+</body>
+</html>

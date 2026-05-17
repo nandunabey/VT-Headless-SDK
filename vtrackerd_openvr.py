@@ -37,6 +37,7 @@ SDK_VERSION = "0.2"
 VUT_SDK_DIR   = Path(__file__).resolve().parent          # C:\Users\vive_\dev\vut-sdk
 ROLES_FILE    = VUT_SDK_DIR / "tracker_roles.json"
 RECORDINGS_DIR = VUT_SDK_DIR / "recordings"
+ANCHORS_FILE   = VUT_SDK_DIR / "anchors.json"
 
 
 # ---------------------------------------------------------------------------
@@ -67,6 +68,8 @@ class _HttpHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/recorder/sessions":
             self._get_sessions()
+        elif self.path == "/calibration/anchors":
+            self._get_calibration_anchors()
         else:
             super().do_GET()
 
@@ -80,6 +83,7 @@ class _HttpHandler(SimpleHTTPRequestHandler):
             "/recorder/stop_playback": self._post_rec_stop_playback,
             "/recorder/export/csv":   self._post_export_csv,
             "/recorder/export/json":  self._post_export_json,
+            "/calibration/save-anchors": self._post_save_anchors,
         }
         handler = routes.get(self.path)
         if handler is None:
@@ -319,6 +323,27 @@ class _HttpHandler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(raw)
+
+    # ── /calibration/anchors ─────────────────────────────────────────────────
+    def _get_calibration_anchors(self):
+        if ANCHORS_FILE.is_file():
+            try:
+                data = json.loads(ANCHORS_FILE.read_text())
+                self._json_resp(data)
+                return
+            except Exception:
+                pass
+        self._json_resp({"origin": None, "anchors": {}, "zones": {}})
+
+    # ── /calibration/save-anchors ─────────────────────────────────────────────
+    def _post_save_anchors(self):
+        body = self._read_body()
+        try:
+            data = json.loads(body)
+            ANCHORS_FILE.write_text(json.dumps(data, indent=2))
+            self._json_resp({"status": "ok"})
+        except Exception as exc:
+            self._json_resp({"status": "error", "message": str(exc)}, 400)
 
     # ── Helpers ───────────────────────────────────────────────────────────────
     def _read_body(self) -> bytes:
