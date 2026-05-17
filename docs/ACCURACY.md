@@ -27,7 +27,7 @@ https://doi.org/10.21203/rs.3.rs-6989733/v1
 Concordance Correlation Coefficient (CCC) > 0.99 is 
 considered "almost perfect" agreement (McBride, 2005).
 
-### Important caveat — headless mode
+### Important caveat — headless mode - !!! More validation Needed!!! 
 
 The above study used SteamVR with an active VIVE XR Elite 
 HMD present in the session. The VUT Headless SDK runs 
@@ -67,7 +67,7 @@ For research deployments, characterise your specific
 environment using the benchmark tool (v0.3) before
 collecting study data.
 
-## Noise Floor (measured via VUT Headless SDK)
+## Noise Floor (measured via VUT Headless SDK)   -  !! MORE Valifation needed!! 
 
 Methodology: single tracker placed on rigid stationary 
 surface, recorded for 65 seconds at 64.1Hz, 
@@ -94,18 +94,7 @@ Note: this is a single-tracker measurement under
 controlled indoor conditions. Results may vary with 
 environment, lighting, and tracker orientation.
 
-## Comparison to other systems
 
-| System | Typical Error | Cost | Portable |
-|--------|--------------|------|----------|
-| Vicon / OptiTrack | <1mm | $50k-$500k | No |
-| Xsens IMU suit | 5-15mm (drift) | $15k-$40k | Yes |
-| VIVE Ultimate Tracker | 1-3mm | ~$300/tracker | Yes |
-| MediaPipe (camera) | 50-100mm | Free | Yes |
-| Microsoft Kinect | 10-30mm | Discontinued | No |
-
-Sources: He et al. 2026, Kulozik & Jarrassé 2024, 
-published literature. Costs approximate.
 
 ## Citation
 
