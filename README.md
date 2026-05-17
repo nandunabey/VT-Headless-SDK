@@ -6,12 +6,7 @@
 > Tested on 5x VIVE Ultimate Trackers (VUT) + 1 x Tracker dongle. 
 
 > ⚠️ **Unofficial SDK — Community Project**
-> This is an independent, community-built SDK and is
-> NOT affiliated with, endorsed by, or supported by
-> HTC Corporation or Valve Corporation.
-> VIVE, VIVE Ultimate Tracker, and SteamVR are
-> trademarks of their respective owners.
-> Use at your own risk.
+> UNOFFICIAL SDK.  This is an unofficial community alpha that uses publicly available runtime interfaces to read pose data from VIVE Ultimate Trackers in a headless SteamVR setup. It is not endorsed, supported, or maintained by HTC Corporation or Valve Corporation.
 
 Headless 6DoF pose streaming for VIVE Ultimate Trackers.
 
@@ -36,12 +31,12 @@ from VIVE Ultimate Trackers to any application via WebSocket.
 ## Prerequisites
 
 **Hardware**
-- VIVE Ultimate Trackers (tested with 5x simultaneously)
+- VIVE Ultimate Trackers (tested with 5x simultaneously max supported by HTC)
 - 1 x Tracker dongle.
 - 1 x SteamVR capable Windows machine
 
 
-**Software**
+**Software
 - Windows 11
 - SteamVR installed and running
 - Vive Hub with trackers paired and running
