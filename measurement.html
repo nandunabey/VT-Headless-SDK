@@ -183,6 +183,14 @@
   .sb-msg.ok  { color: var(--green); }
   .sb-msg.err { color: var(--red); }
 
+  /* ── How-to ── */
+  .howto-bar { background: #111; border-bottom: 1px solid #1e1e1e; padding: 0 20px; position: relative; z-index: 1; }
+  .howto-toggle { background: none; border: none; color: #00ffcc; font-family: monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; padding: 7px 0; opacity: .6; }
+  .howto-toggle:hover { opacity: 1; }
+  .howto-panel { display: none; padding: 14px 0 16px; font-size: 11px; color: #999; line-height: 1.85; border-top: 1px solid #1a1a1a; }
+  .howto-panel.open { display: block; }
+  .howto-tip { color: #666; font-style: italic; margin-top: 8px; }
+
   /* ── Banner stack ── */
   #banner-stack { position: fixed; top: 46px; left: 0; right: 0; z-index: 1000; display: flex; flex-direction: column; pointer-events: none; }
   .banner { display: flex; align-items: flex-start; gap: 12px; padding: 12px 20px; font-size: 14px; font-weight: bold; color: #ffffff; pointer-events: all; line-height: 1.5; white-space: pre-wrap; }
@@ -206,6 +214,18 @@
   </div>
   <a href="http://localhost:8080/visualiser.html" class="h-back">← VISUALISER</a>
 </header>
+
+<div class="howto-bar">
+  <button class="howto-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ HOW TO USE':'? HOW TO USE'">? HOW TO USE</button>
+  <div class="howto-panel">
+    1. Click tracker cards to select them (max 3)<br>
+    2. 1 tracker: shows position + distance from origin<br>
+    3. 2 trackers: shows live distance between them<br>
+    4. 3 trackers: shows all distances + angle at middle<br>
+    5. Click SAVE to export measurement history as CSV<br>
+    <span class="howto-tip">Tip: use 3-tracker mode to measure joint angles</span>
+  </div>
+</div>
 
 <div class="left-col">
   <div class="panel-hdr">

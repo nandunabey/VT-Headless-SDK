@@ -180,6 +180,16 @@
   .sb-msg.ok  { color: var(--green); }
   .sb-msg.err { color: var(--red); }
 
+  /* ── How-to ── */
+  .howto-bar { background: #111; border-bottom: 1px solid #1e1e1e; padding: 0 20px; position: relative; z-index: 1; }
+  .howto-toggle { background: none; border: none; color: #00ffcc; font-family: monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; padding: 7px 0; opacity: .6; }
+  .howto-toggle:hover { opacity: 1; }
+  .howto-panel { display: none; padding: 14px 0 16px; font-size: 11px; color: #999; line-height: 1.85; border-top: 1px solid #1a1a1a; }
+  .howto-panel.open { display: block; }
+  .howto-head { color: #00ffcc; letter-spacing: 1px; text-transform: uppercase; font-size: 10px; margin: 10px 0 3px; }
+  .howto-head:first-child { margin-top: 0; }
+  .howto-tip { color: #666; font-style: italic; margin-top: 8px; }
+
   /* ── Banner stack ── */
   #banner-stack { position: fixed; top: 46px; left: 0; right: 0; z-index: 1000; display: flex; flex-direction: column; pointer-events: none; }
   .banner { display: flex; align-items: flex-start; gap: 12px; padding: 12px 20px; font-size: 14px; font-weight: bold; color: #ffffff; pointer-events: all; line-height: 1.5; white-space: pre-wrap; }
@@ -203,6 +213,25 @@
   </div>
   <a href="http://localhost:8080/visualiser.html" class="h-back">← VISUALISER</a>
 </header>
+
+<div class="howto-bar">
+  <button class="howto-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ HOW TO USE':'? HOW TO USE'">? HOW TO USE</button>
+  <div class="howto-panel">
+    <div class="howto-head">Set Origin</div>
+    1. Place a tracker at your reference point<br>
+    2. Click SET ORIGIN — all coordinates become relative to this point<br>
+    3. Click RESET to return to SteamVR coordinates<br>
+    <div class="howto-head">Anchors</div>
+    1. Select a tracker from the dropdown<br>
+    2. Type a name (e.g. "table_edge", "goal_line")<br>
+    3. Click SAVE ANCHOR — position is saved permanently<br>
+    <div class="howto-head">Zones</div>
+    1. Name the zone and select a centre tracker<br>
+    2. Set radius in metres<br>
+    3. Click SAVE ZONE<br>
+    <span class="howto-tip">Tip: anchors are accessible via Claude Code using the vut-mcp get_anchors tool</span>
+  </div>
+</div>
 
 <!-- ── Left: ORIGIN ── -->
 <div class="left-col">
