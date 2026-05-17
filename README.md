@@ -1,9 +1,9 @@
 # VUT SDK
 
-> ⚠️ **Alpha Release — v0.1.0-alpha**
+> ⚠️ **Alpha Release — v0.2.0-alpha**
 > This SDK is in early development. APIs may change
 > between releases. Not recommended for production use.
-> Tested on 4x VIVE Ultimate Trackers in VO mode on Windows 11.
+> Tested on 5x VIVE Ultimate Trackers in VO mode on Windows 11.
 
 > ⚠️ **Unofficial SDK — Community Project**
 > This is an independent, community-built SDK and is
@@ -26,7 +26,7 @@ VUT SDK bridges SteamVR and Python, streaming live 6DoF poses
 from VIVE Ultimate Trackers to any application via WebSocket.
 
 - Real-time position + orientation per tracker
-- Up to 4+ trackers simultaneously
+- Up to 5+ trackers simultaneously
 - WebSocket API at `ws://localhost:8765`
 - Includes robotics and body tracking visualisers
 - Foundation for [vut-skeleton](placeholder) body tracking
@@ -36,7 +36,7 @@ from VIVE Ultimate Trackers to any application via WebSocket.
 ## Prerequisites
 
 **Hardware**
-- VIVE Ultimate Trackers (tested with 4x simultaneously)
+- VIVE Ultimate Trackers (tested with 5x simultaneously)
 - Any SteamVR-compatible base station or camera setup
 
 **Software**
@@ -63,8 +63,6 @@ git clone https://github.com/nandunabey/VUT-Headless-SDK.git
 cd VUT-Headless-SDK
 pip install -e vut-sdk/
 ```
-
-> PyPI package coming in v0.2. Star the repo to be notified.
 
 ---
 
@@ -142,6 +140,16 @@ for serial, pose in fleet.get_poses().items():
 ![Tracker daemon](docs/screenshots/tracker-daemon.png)
 *VUT Tracker Daemon — serial-keyed pose stream at 64Hz*
 
+### Toolkit tools
+![Setup](docs/screenshots/setup-roles.png)
+*Tracker role assignment — one-time setup*
+![Recorder](docs/screenshots/recorder-playback.png)
+*Session recorder — record, playback, export CSV*
+![Measurement](docs/screenshots/measurement-angle.png)
+*Live spatial measurement — distance and angle*
+![Calibration](docs/screenshots/calibration-anchors.png)
+*Calibration — named spatial anchors*
+
 ---
 
 ## Demo
@@ -159,12 +167,31 @@ for serial, pose in fleet.get_poses().items():
 ## Architecture
 
 ```
-4x VIVE Ultimate Trackers
+5x VIVE Ultimate Trackers
   → SteamVR
   → vtrackerd_openvr.py
   → WebSocket ws://localhost:8765
   → Your application
 ```
+
+---
+
+## Toolkit
+
+Browser-based tools served at `http://localhost:8080`
+after running `START_VUT_ROBOTICS_SDK.bat`:
+
+| Tool | URL | Description |
+|------|-----|-------------|
+| Visualiser | /visualiser.html | Live robotics dashboard |
+| Setup | /setup.html | Tracker role assignment |
+| Recorder | /recorder.html | Record, playback, export CSV |
+| Measurement | /measurement.html | Live distance + angle |
+| Calibration | /calibration.html | Origin + named anchors |
+
+Download the installer:
+[VUT-Headless-SDK-Setup-v0.2.0-alpha.exe](installer/)
+Includes Python prerequisites check and auto-setup.
 
 ---
 
@@ -218,7 +245,8 @@ identifiers. Always key on the serial number (top-level dict key).
 
 - Windows 11 ✓
 - Python 3.14 ✓
-- 4x VIVE Ultimate Trackers confirmed simultaneously
+- 5x VIVE Ultimate Trackers confirmed simultaneously
+- Firmware: 1.0.999.178
 - Standard tracking mode confirmed (no licence required)
 - VO mode confirmed with Business+ licence
 - vut-skeleton body tracking: 5 trackers → 17 joints
@@ -232,11 +260,10 @@ identifiers. Always key on the serial number (top-level dict key).
 - Windows only (SteamVR dependency)
 - Tracker IDs may reorder on reconnect — use serial numbers for
   consistent assignment
-- No built-in recording/playback (use --mock in vut-skeleton)
 - SteamVR must be running before starting the SDK stack
 
-See [docs/ACCURACY.md](docs/ACCURACY.md) for validated
-accuracy figures and comparison to other systems.
+Position noise floor: 0.30mm 3D RMS (stationary, 64Hz)
+See [docs/ACCURACY.md](docs/ACCURACY.md) for full characterisation.
 
 ---
 
@@ -245,7 +272,7 @@ accuracy figures and comparison to other systems.
 ### vut-skeleton
 17-joint body tracking skeleton solver built on vut-sdk.
 5 VIVE Ultimate Trackers → full body pose with inferred joints.
-https://github.com/[username]/vut-skeleton
+https://github.com/nandunabey/vut-skeleton
 
 ---
 
@@ -255,7 +282,7 @@ VUT Headless SDK includes a Model Context Protocol (MCP)
 server — connect Claude Code or any MCP-compatible AI
 agent to your trackers in minutes.
 
-Requires: [vut-toolkit](https://github.com/nandunabey/vut-toolkit)
+Requires: [vut-toolkit](https://github.com/nandunabey/vut-toolkit-unofficial)
 
 ```bash
 cd vut-toolkit/mcp/vut-mcp
