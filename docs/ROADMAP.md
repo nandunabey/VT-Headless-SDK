@@ -1,33 +1,36 @@
 # Roadmap
 
-## v0.1.0-alpha (released May 2026)
+## v0.1.0-alpha — Core SDK ✓
+- ✓ Serial-stable WebSocket pose stream
+- ✓ Robotics + body tracking visualisers
+- ✓ Battery monitoring
+- ✓ --fps flag (30/60/100Hz)
+- ✓ Screenshots + demo videos in README
 
-- Headless 6DoF pose streaming via WebSocket
-- Serial-keyed flat JSON format
-- HTTP file server + static tool hosting
-- Robotics visualiser (top-down + 3D)
-- Tracker role assignment (setup.html)
-- Recorder — record, playback, export CSV/JSON
-- Measurement tool — live distance and angle
-- Calibration tool — origin + named anchors + zones
-- MCP server (vut-mcp) — Claude Code integration
-- ACCURACY.md — validated noise floor measurement
-- PLATFORM.md — OpenXR investigation findings
+## v0.2.0-alpha — Developer Toolkit ✓
+- ✓ Tracker role assignment UI
+- ✓ Recorder + playback + CSV export
+- ✓ Spatial measurement tool
+- ✓ Calibration + named anchors
+- ✓ MCP Server (Claude Code integration)
+- ✓ examples/ (Python, Node.js, Unity, ROS stub)
+- ✓ Installer .exe with component selection
+- ✓ Legal audit — MIT, no proprietary content
+- ✓ ACCURACY.md — 0.30mm RMS noise floor measured
+- ✓ How-to guides in all tools
 
-## v0.2 (in progress)
+## v0.3 — Research Toolkit (next)
+- Data quality metrics panel
+- BVH / CSV / C3D / TRC export formats
+- Sync markers (multi-modal studies)
+- Trial protocol manager
+- Accuracy benchmark tool
+- anchor_to_anchor_distance MCP tool
+- vut-skeleton-mcp
+- tools/triggers (spatial event system)
 
-- HTTP endpoint routing hardening (`_clean_path`)
-- Prominent error banners across all tools
-- vut-mcp anchor tools (`get_anchors`, `distance_to_anchor`)
-- PyPI package (`pip install vut-sdk`)
-
-## Future
-
-- Tracking map quality indicator
-    Surface coverage score, dead zone detection,
-    environment setup guidance in first-run wizard
-- vut-skeleton-mcp — skeleton joint data via MCP
+## v0.4 — Distribution
 - Linux via Monado OpenXR runtime
 - ROS bridge (vut_ros package)
-- PyPI package publication (vut-sdk on PyPI)
-- anchor_to_anchor_distance MCP tool
+- PyPI package publication
+- Tracking map quality indicator
