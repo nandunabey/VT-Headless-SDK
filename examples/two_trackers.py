@@ -1,28 +1,33 @@
+﻿"""
+VUT Headless SDK — Two Tracker Distance
+Prints live distance between two trackers by serial.
+Edit SERIAL_A and SERIAL_B to match your trackers.
+Run: python two_trackers.py
+Requires: pip install websockets
 """
-VUT Robotics SDK — two_trackers
-=================================
-Live pose from both trackers printed at 10 Hz.
+import asyncio, websockets, json, math
 
-Run:
-  python examples/two_trackers.py
-"""
+WS_URL = "ws://localhost:8765"
+SERIAL_A = "YOUR_SERIAL_A"  # e.g. "41-A33204726"
+SERIAL_B = "YOUR_SERIAL_B"  # e.g. "41-A33P02882"
 
-import time
-from vut_sdk import VUTTrackerFleet
+def distance(a, b):
+    return math.sqrt(
+        (a['x']-b['x'])**2 +
+        (a['y']-b['y'])**2 +
+        (a['z']-b['z'])**2
+    )
 
-with VUTTrackerFleet() as fleet:
-    print(f"Trackers detected: {fleet.tracker_ids}")
-    print("Streaming at 10 Hz — Ctrl+C to stop\n")
+async def main():
+    async with websockets.connect(WS_URL) as ws:
+        print(f"Measuring distance: {SERIAL_A} <-> {SERIAL_B}\n")
+        async for message in ws:
+            data = json.loads(message)
+            if SERIAL_A in data and SERIAL_B in data:
+                d = distance(
+                    data[SERIAL_A]["position"],
+                    data[SERIAL_B]["position"]
+                )
+                print(f"Distance: {d:.3f}m  ({d*100:.1f}cm)")
 
-    try:
-        while True:
-            poses = fleet.get_all_poses()
-            for tid, pose in poses.items():
-                p = pose.pos
-                e = pose.euler
-                print(f"[{tid}]  pos=({p.x:+.3f}, {p.y:+.3f}, {p.z:+.3f})  "
-                      f"yaw={e.yaw:.1f}°")
-            print()
-            time.sleep(0.1)
-    except KeyboardInterrupt:
-        pass
+asyncio.run(main())
