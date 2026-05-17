@@ -3,7 +3,7 @@
 > ⚠️ **Alpha Release — v0.2.0-alpha**
 > This SDK is in early development. APIs may change
 > between releases. Not recommended for production use.
-> Tested on 5x VIVE Ultimate Trackers in VO mode on Windows 11.
+> Tested on 5x VIVE Ultimate Trackers (VUT) + 1 x Tracker dongle. 
 
 > ⚠️ **Unofficial SDK — Community Project**
 > This is an independent, community-built SDK and is
@@ -22,7 +22,7 @@ over WebSocket for robotics, motion capture, and body tracking.
 
 ## What this is
 
-VUT SDK bridges SteamVR and Python, streaming live 6DoF poses
+VUT Headless SDK bridges SteamVR and Python, streaming live 6DoF poses
 from VIVE Ultimate Trackers to any application via WebSocket.
 
 - Real-time position + orientation per tracker
@@ -37,20 +37,21 @@ from VIVE Ultimate Trackers to any application via WebSocket.
 
 **Hardware**
 - VIVE Ultimate Trackers (tested with 5x simultaneously)
-- Any SteamVR-compatible base station or camera setup
+- 1 x Tracker dongle.
+- 1 x SteamVR capable Windows machine
+
 
 **Software**
 - Windows 11
 - SteamVR installed and running
+- Vive Hub with trackers paired and running
 - Python 3.10+
 ### Tracking modes
-| Mode | Licence | Room Scan | Map Persists |
-|---|---|---|---|
-| Standard | None | Each session | No |
-| VO mode (recommended) | Business+ | First time only | Yes |
+Standard out of the box mode. 
+VO mode (Need VB+ licences)
 
-Standard mode confirmed working out of the box.
-VO mode: apply at vive.com/business
+Standard LBE and WiFi LBE mode not tested  
+Potentially able to increase tracking volume by creating a LBE map with a  Vive Headset (Focus Vision) and impoprting the map to VUT via Vive Busienss+ Console - Need VUT licences - NOT TESTED. 
 
 ---
 
@@ -168,6 +169,7 @@ for serial, pose in fleet.get_poses().items():
 
 ```
 5x VIVE Ultimate Trackers
+1x Tracker dongle
   → SteamVR
   → vtrackerd_openvr.py
   → WebSocket ws://localhost:8765
