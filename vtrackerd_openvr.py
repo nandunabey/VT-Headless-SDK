@@ -24,6 +24,7 @@ import uuid
 from functools import partial
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+from urllib.parse import urlparse
 
 import openvr
 import websockets
@@ -58,37 +59,43 @@ _play_active   = False
 # ---------------------------------------------------------------------------
 
 class _HttpHandler(SimpleHTTPRequestHandler):
+    def _clean_path(self) -> str:
+        """Strip query string and fragment so routes match cleanly."""
+        return urlparse(self.path).path
+
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin",  "*")
         self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Content-Length", "0")
         self.end_headers()
 
     def do_GET(self):
-        if self.path == "/recorder/sessions":
+        path = self._clean_path()
+        if path == "/recorder/sessions":
             self._get_sessions()
-        elif self.path == "/calibration/anchors":
+        elif path == "/calibration/anchors":
             self._get_calibration_anchors()
         else:
             super().do_GET()
 
     def do_POST(self):
+        path = self._clean_path()
         routes = {
-            "/save-roles":            self._post_save_roles,
-            "/recorder/start":        self._post_rec_start,
-            "/recorder/stop":         self._post_rec_stop,
-            "/recorder/play":         self._post_rec_play,
-            "/recorder/pause":        self._post_rec_pause,
-            "/recorder/stop_playback": self._post_rec_stop_playback,
-            "/recorder/export/csv":   self._post_export_csv,
-            "/recorder/export/json":  self._post_export_json,
+            "/save-roles":               self._post_save_roles,
+            "/recorder/start":           self._post_rec_start,
+            "/recorder/stop":            self._post_rec_stop,
+            "/recorder/play":            self._post_rec_play,
+            "/recorder/pause":           self._post_rec_pause,
+            "/recorder/stop_playback":   self._post_rec_stop_playback,
+            "/recorder/export/csv":      self._post_export_csv,
+            "/recorder/export/json":     self._post_export_json,
             "/calibration/save-anchors": self._post_save_anchors,
         }
-        handler = routes.get(self.path)
+        handler = routes.get(path)
         if handler is None:
-            self.send_response(404)
-            self.end_headers()
+            self._json_resp({"error": f"unknown route: {path}"}, 404)
             return
         handler()
 
