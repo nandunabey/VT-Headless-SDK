@@ -56,17 +56,15 @@ VO mode: apply at vive.com/business
 
 ## Installation
 
-```bash
-pip install vut-sdk
-```
-
-Or from source:
+Clone and install from source:
 
 ```bash
-git clone https://github.com/[username]/vut-sdk.git
-cd vut-sdk
-pip install -e .
+git clone https://github.com/nandunabey/VUT-Headless-SDK.git
+cd VUT-Headless-SDK
+pip install -e vut-sdk/
 ```
+
+> PyPI package coming in v0.2. Star the repo to be notified.
 
 ---
 
@@ -248,6 +246,48 @@ accuracy figures and comparison to other systems.
 17-joint body tracking skeleton solver built on vut-sdk.
 5 VIVE Ultimate Trackers → full body pose with inferred joints.
 https://github.com/[username]/vut-skeleton
+
+---
+
+## AI Agent Integration (MCP)
+
+VUT Headless SDK includes a Model Context Protocol (MCP)
+server — connect Claude Code or any MCP-compatible AI
+agent to your trackers in minutes.
+
+Requires: [vut-toolkit](https://github.com/nandunabey/vut-toolkit)
+
+```bash
+cd vut-toolkit/mcp/vut-mcp
+npm install
+claude mcp add vut-mcp node "C:/path/to/vut-toolkit/mcp/vut-mcp/index.js"
+```
+
+### Available MCP tools
+| Tool | Description |
+|------|-------------|
+| get_all_poses | All active tracker positions |
+| get_tracker_pose | Single tracker by serial |
+| get_distance | Distance between two trackers |
+| get_angle | Angle at middle tracker (3 points) |
+| get_spatial_summary | Natural language scene description |
+| watch_tracker | Block until tracker moves threshold |
+| get_anchors | Named spatial anchors |
+| distance_to_anchor | Tracker distance to named point |
+| anchor_to_anchor_distance | Distance between two anchors |
+
+### Example Claude Code session
+
+```
+"What trackers are active right now?"
+"How far apart are VUT-01 and VUT-03?"
+"Watch VUT-02 and tell me when it moves 50mm"
+"How far is VUT-01 from the desk anchor?"
+"Delete the test anchor"
+```
+
+Believed to be the first MCP server providing real-time
+physical spatial perception via consumer hardware. May 2026.
 
 ---
 

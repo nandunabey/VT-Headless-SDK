@@ -44,6 +44,29 @@ Anecdotal observation from SDK development:
 Headless mode accuracy validation is a planned feature 
 of the research/benchmark tool (v0.3).
 
+## Environmental Factors
+
+Tracking accuracy is significantly affected by the
+physical environment. VIVE Ultimate Trackers use SLAM
+(visual simultaneous localisation and mapping) —
+accuracy depends on:
+
+- **Feature richness** — plain walls and featureless
+  surfaces degrade tracking. Varied textures and
+  patterns improve it.
+- **Lighting** — consistent diffuse lighting is optimal.
+  Direct sunlight, strobing, or very low light reduces
+  accuracy.
+- **Room size** — larger spaces with more visual anchors
+  generally track better.
+- **Map quality** — VIVE Hub's room scan builds the
+  tracking map. Follow HTC's environment setup guidelines
+  for best results before any research data collection.
+
+For research deployments, characterise your specific
+environment using the benchmark tool (v0.3) before
+collecting study data.
+
 ## Noise Floor (measured via VUT Headless SDK)
 
 Methodology: single tracker placed on rigid stationary 
