@@ -10,3 +10,10 @@ venv/
 *.log
 .DS_Store
 Thumbs.db
+
+# Personal spatial data — do not commit
+anchors.json
+tracker_roles.json
+
+# Session recordings
+recordings/
