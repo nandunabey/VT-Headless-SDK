@@ -31,21 +31,20 @@ if errorlevel 1 (
 )
 echo  [OK] SteamVR detected ^(vrserver.exe^)
 
+set VIVE_HUB_RUNNING=0
 tasklist /FI "IMAGENAME eq ViveTrackerServer.exe" 2>nul | find /I "ViveTrackerServer.exe" >nul
-if errorlevel 1 (
+if not errorlevel 1 set VIVE_HUB_RUNNING=1
+if %VIVE_HUB_RUNNING%==0 (
     tasklist /FI "IMAGENAME eq VHConsole.exe" 2>nul | find /I "VHConsole.exe" >nul
-    if errorlevel 1 (
-        color 0C
-        echo  [ERROR] VHConsole / ViveTrackerServer is NOT running.
-        echo.
-        echo  Please start VHConsole.exe first ^(VIVE Hub^),
-        echo  confirm tracker LED is solid, then run again.
-        echo.
-        pause
-        exit /b 1
-    )
+    if not errorlevel 1 set VIVE_HUB_RUNNING=1
 )
-echo  [OK] VIVE Hub / ViveTrackerServer detected
+if %VIVE_HUB_RUNNING%==1 (
+    echo  [OK] VIVE Hub / ViveTrackerServer detected
+) else (
+    echo  [--] VIVE Hub not detected --
+    echo       OK for Base Station mode
+    echo       Required for VUT ^(VIVE Ultimate Tracker^) mode
+)
 
 echo.
 
@@ -117,6 +116,12 @@ echo.
 echo  Tracker serials:
 echo    VUT-01: 47-A33F01412  ^(cyan^)
 echo    VUT-02: FA4383B00537  ^(amber^)
+echo.
+if %VIVE_HUB_RUNNING%==1 (
+    echo  Mode: VUT ^(VIVE Ultimate Tracker^)
+) else (
+    echo  Mode: Base Station ^(Lighthouse^)
+)
 echo.
 echo  Daemon window:   "VUT Tracker Daemon"
 echo  Skeleton window: "VUT Skeleton Server"
