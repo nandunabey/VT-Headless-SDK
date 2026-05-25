@@ -29,5 +29,3 @@ See: docs/probes/probe_openxr.py
 ## macOS — not viable
 SteamVR does not support macOS.
 
-## Contributions
-Linux and Monado results welcome — please open an issue.

@@ -12,7 +12,7 @@ These tools require:
 - VIVE Hub installed and running ([vive.com](https://www.vive.com))
 - SteamVR installed and running (via Steam)
 - VIVE Ultimate Tracker(s) paired and showing green in VIVE Hub
-- VIVE Business+ licence (for VO mode — no room scan required)
+
 
 No Python installation required on the target machine.
 
@@ -20,9 +20,11 @@ No Python installation required on the target machine.
 
 ## How to use
 
-1. Run `START_VUT_ROBOTICS_SDK.bat` to start the tracking stack
-2. Open a terminal in this folder
-3. Run `vut-status.exe` to confirm everything is working
+•	Open VIVE Hub — confirm trackers showing sloid green (i.e. tracking state in VBHub)
+•	Launch SteamVR — wait for it to fully load
+•Instasll  VUT-Headless-SDK-Setup-v0.2.0-alpha_Unoffical.exe and run  Start VUT SDK (or run START_VUT_ROBOTICS_SDK.bat")
+
+ 
 
 ---
 

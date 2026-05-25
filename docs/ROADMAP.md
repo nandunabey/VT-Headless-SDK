@@ -29,8 +29,4 @@
 - vut-skeleton-mcp
 - tools/triggers (spatial event system)
 
-## v0.4 — Distribution
-- Linux via Monado OpenXR runtime
-- ROS bridge (vut_ros package)
-- PyPI package publication
-- Tracking map quality indicator
+
