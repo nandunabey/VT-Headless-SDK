@@ -14,7 +14,7 @@
     --red:    #ff4444;
     --green:  #00e676;
     --text:   #cccccc;
-    --muted:  #888888;
+    --muted:  #aaaaaa;
   }
 
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -32,7 +32,7 @@
 
   /* ── Header ── */
   header {
-    grid-column: 1 / -1;
+    grid-row: 1; grid-column: 1 / -1;
     background: var(--panel);
     border-bottom: 1px solid var(--border);
     display: flex;
@@ -51,22 +51,23 @@
   .conn-dot.waiting      { background: var(--muted); }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
   .h-back {
-    font-size: 9px; color: var(--muted); text-decoration: none; letter-spacing: 1px;
-    padding: 4px 8px; border: 1px solid var(--border); border-radius: 2px;
-    transition: color .2s, border-color .2s;
+    font-size: 9px; color: var(--text); text-decoration: none; letter-spacing: 1px;
+    padding: 4px 8px; border: 1px solid #3a3a3a; border-radius: 2px;
+    opacity: .75; transition: color .2s, border-color .2s, opacity .2s;
   }
-  .h-back:hover { color: var(--cyan); border-color: var(--cyan); }
+  .h-back:hover { color: var(--cyan); border-color: var(--cyan); opacity: 1; }
 
   /* ── Left column — tracker list ── */
   .left-col {
+    grid-row: 2; grid-column: 1;
     background: var(--panel);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: hidden; min-height: 0;
   }
   .panel-hdr {
-    font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #fff;
+    font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: #fff;
     padding: 11px 14px 9px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
@@ -84,7 +85,7 @@
     user-select: none;
   }
   .trk-card:hover       { border-color: #333; background: #141414; }
-  .trk-card.selected    { border-color: var(--cyan) !important; background: rgba(0,255,204,.04); }
+  .trk-card.selected    { border-color: var(--cyan) !important; border-left-width: 3px; padding-left: 8px; background: rgba(0,255,204,.06); }
   .trk-card.lost        { opacity: .5; cursor: default; }
   .trk-card.lost:hover  { border-color: var(--border); background: transparent; }
 
@@ -98,56 +99,69 @@
   }
   .badge-tracking { background: rgba(0,230,118,.1); border: 1px solid var(--green); color: var(--green); }
   .badge-lost     { background: rgba(255,68,68,.1);  border: 1px solid var(--red);  color: var(--red); }
+  .badge-vut      { background: rgba(0,255,204,.1);  border: 1px solid var(--cyan);  color: var(--cyan); }
+  .badge-lh       { background: rgba(255,170,0,.1);  border: 1px solid var(--amber); color: var(--amber); }
   .sel-chip {
     font-size: 9px; background: var(--cyan); color: #000;
     border-radius: 50%; width: 16px; height: 16px;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; font-weight: bold;
   }
-  .tc-serial { font-size: 9px; color: var(--muted); margin-bottom: 4px; letter-spacing: .5px; }
-  .tc-pos    { font-size: 9px; color: var(--text); display: flex; gap: 8px; }
-  .tc-ax     { color: var(--muted); }
+  .tc-serial { font-size: 8px; color: var(--muted); margin-bottom: 5px; letter-spacing: .5px; font-variant-numeric: tabular-nums; }
+  .tc-pos    { font-size: 9px; color: var(--text); display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; font-variant-numeric: tabular-nums; }
+  .tc-coord  { display: flex; justify-content: space-between; align-items: center; gap: 3px; }
+  .tc-ax     { color: var(--muted); flex-shrink: 0; }
 
   /* ── Right column — measurements ── */
-  .right-col { display: flex; flex-direction: column; overflow: hidden; }
+  .right-col { grid-row: 2; grid-column: 2; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
   .meas-hdr {
-    font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #fff;
+    font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: #fff;
     padding: 11px 18px 9px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
   .meas-body {
-    flex: 1; overflow-y: auto; padding: 16px 20px;
+    flex: 1; overflow-y: auto; padding: 24px 20px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
   }
-  .meas-empty { text-align: center; color: var(--muted); font-size: 11px; letter-spacing: 1px; line-height: 2; }
+  .meas-empty {
+    text-align: center; font-size: 11px; letter-spacing: 1px;
+    border: 1px solid #282828; border-top: 2px solid rgba(0,255,204,.22);
+    border-radius: 3px; padding: 32px 40px;
+    background: rgba(255,255,255,.012); max-width: 380px;
+  }
 
   /* big primary value */
-  .big-val  { font-size: 68px; color: var(--cyan); text-align: center; line-height: 1; margin: 6px 0 2px; }
-  .big-unit { font-size: 28px; color: var(--muted); }
-  .big-sub  { font-size: 15px; color: #666; text-align: center; margin-bottom: 10px; }
-  .trk-lbl  { font-size: 11px; color: var(--muted); text-align: center; margin-bottom: 8px; }
+  .big-val  {
+    font-size: 68px; color: var(--cyan); text-align: center; line-height: 1;
+    margin: 14px 0 4px; font-variant-numeric: tabular-nums; letter-spacing: -2px;
+    text-shadow: 0 0 40px rgba(0,255,204,.18);
+    transition: color .25s;
+  }
+  .big-unit { font-size: 26px; color: var(--muted); letter-spacing: 0; }
+  .big-sub  { font-size: 14px; color: var(--muted); text-align: center; margin-bottom: 16px; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+  .trk-lbl  { font-size: 11px; color: var(--muted); text-align: center; margin-bottom: 14px; }
   .trk-lbl b { color: #fff; }
 
-  .sec-sep   { width: 100%; max-width: 400px; border: none; border-top: 1px solid var(--border); margin: 10px 0; }
-  .sec-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; text-align: center; margin-bottom: 6px; }
+  .sec-sep   { width: 100%; max-width: 400px; border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+  .sec-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; text-align: center; margin-bottom: 8px; }
 
-  .pos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; width: 100%; max-width: 380px; }
-  .pos-cell { background: #0d0d0d; border: 1px solid var(--border); border-radius: 2px; padding: 8px; text-align: center; }
-  .pos-axis { font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-bottom: 3px; }
-  .pos-val  { font-size: 16px; color: var(--text); font-weight: 500; }
+  .pos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; width: 100%; max-width: 380px; }
+  .pos-cell { background: #141414; border: 1px solid #2a2a2a; border-radius: 2px; padding: 9px 8px; text-align: center; }
+  .pos-axis { font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-bottom: 4px; }
+  .pos-val  { font-size: 15px; color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
 
-  .mm-row { display: flex; gap: 20px; font-size: 11px; color: var(--muted); margin: 6px 0; }
-  .mm-row b { color: var(--text); }
+  .mm-row { display: flex; gap: 20px; font-size: 11px; color: var(--muted); margin: 8px 0; }
+  .mm-row b { color: var(--text); font-variant-numeric: tabular-nums; }
 
-  .dist-table { width: 100%; max-width: 360px; margin-bottom: 14px; }
-  .dist-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .dist-table { width: 100%; max-width: 360px; margin-bottom: 16px; }
+  .dist-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
   .dist-lbl { color: var(--muted); }
-  .dist-v   { color: var(--text); font-weight: 500; }
+  .dist-v   { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; transition: color .25s; }
 
   /* ── History ── */
   .history-col {
-    grid-column: 1 / -1;
+    grid-row: 3; grid-column: 1 / -1;
     background: var(--panel); border-top: 1px solid var(--border);
     display: flex; flex-direction: column; overflow: hidden;
   }
@@ -157,24 +171,24 @@
   }
   .history-title { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #fff; flex: 1; }
   .btn-sm {
-    font-size: 9px; padding: 3px 9px; border: 1px solid var(--border);
-    border-radius: 2px; background: transparent; color: var(--muted); cursor: pointer;
-    letter-spacing: 1px; transition: color .15s, border-color .15s;
+    font-size: 9px; padding: 3px 9px; border: 1px solid #3a3a3a;
+    border-radius: 2px; background: transparent; color: var(--text); opacity: .7; cursor: pointer;
+    letter-spacing: 1px; transition: opacity .15s, border-color .15s;
   }
-  .btn-sm:hover { color: var(--text); border-color: #444; }
+  .btn-sm:hover { opacity: 1; border-color: #555; }
   .history-log { flex: 1; overflow-y: auto; padding: 4px 14px; font-size: 10px; color: var(--muted); line-height: 1.9; }
   .history-log::-webkit-scrollbar { width: 3px; }
   .history-log::-webkit-scrollbar-thumb { background: var(--border); }
   .hist-row { display: flex; gap: 12px; }
-  .hist-time { color: #444; flex-shrink: 0; min-width: 75px; }
+  .hist-time { color: var(--muted); opacity: .6; flex-shrink: 0; min-width: 75px; font-variant-numeric: tabular-nums; }
   .hist-v    { color: var(--text); }
 
   /* ── Status bar ── */
   .statusbar {
-    grid-column: 1 / -1;
+    grid-row: 4; grid-column: 1 / -1;
     background: var(--panel); border-top: 1px solid var(--border);
     display: flex; align-items: center; padding: 0 14px; gap: 16px;
-    font-size: 9px; color: var(--muted); letter-spacing: 1px;
+    font-size: 9px; color: var(--text); letter-spacing: 1px;
   }
   .sb-item { display: flex; align-items: center; gap: 5px; }
   .sb-v    { color: var(--text); font-weight: 500; }
@@ -183,13 +197,21 @@
   .sb-msg.ok  { color: var(--green); }
   .sb-msg.err { color: var(--red); }
 
-  /* ── How-to ── */
-  .howto-bar { background: #111; border-bottom: 1px solid #1e1e1e; padding: 0 20px; position: relative; z-index: 1; }
-  .howto-toggle { background: none; border: none; color: #00ffcc; font-family: monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; padding: 7px 0; opacity: .6; }
+  /* ── How-to (fixed overlay — does not affect grid) ── */
+  .howto-bar {
+    position: fixed; top: 46px; left: 0; right: 0; z-index: 200;
+    background: var(--panel); border-bottom: 1px solid var(--border); padding: 0 20px;
+    transition: box-shadow .2s, border-bottom-color .2s;
+  }
+  .howto-bar.open {
+    border-bottom-color: rgba(0,255,204,.3);
+    box-shadow: 0 8px 32px rgba(0,0,0,.75);
+  }
+  .howto-toggle { background: none; border: none; color: var(--cyan); font-family: monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; padding: 7px 0; opacity: .6; }
   .howto-toggle:hover { opacity: 1; }
-  .howto-panel { display: none; padding: 14px 0 16px; font-size: 11px; color: #999; line-height: 1.85; border-top: 1px solid #1a1a1a; }
+  .howto-panel { display: none; padding: 14px 0 16px; font-size: 11px; color: var(--text); line-height: 1.85; border-top: 1px solid var(--border); }
   .howto-panel.open { display: block; }
-  .howto-tip { color: #666; font-style: italic; margin-top: 8px; }
+  .howto-tip { color: var(--muted); font-style: italic; margin-top: 8px; }
 
   /* ── Banner stack ── */
   #banner-stack { position: fixed; top: 46px; left: 0; right: 0; z-index: 1000; display: flex; flex-direction: column; pointer-events: none; }
@@ -210,13 +232,13 @@
   <div class="conn-status">
     <div class="conn-dot waiting" id="conn-dot"></div>
     <span id="conn-text" style="color:var(--muted)">WAITING</span>
-    <span style="color:#444;font-size:9px">&nbsp;ws://localhost:8765</span>
+    <span style="color:var(--muted);font-size:9px">&nbsp;ws://localhost:8765</span>
   </div>
   <a href="http://localhost:8080/visualiser.html" class="h-back">← VISUALISER</a>
 </header>
 
 <div class="howto-bar">
-  <button class="howto-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ HOW TO USE':'? HOW TO USE'">? HOW TO USE</button>
+  <button class="howto-toggle" onclick="const p=this.nextElementSibling;p.classList.toggle('open');this.parentElement.classList.toggle('open');this.textContent=p.classList.contains('open')?'▲ HOW TO USE':'? HOW TO USE'">? HOW TO USE</button>
   <div class="howto-panel">
     1. Click tracker cards to select them (max 3)<br>
     2. 1 tracker: shows position + distance from origin<br>
@@ -240,7 +262,15 @@
 <div class="right-col">
   <div class="meas-hdr">MEASUREMENTS</div>
   <div class="meas-body" id="meas-body">
-    <div class="meas-empty">Select trackers on the left<br>to begin measuring</div>
+    <div class="meas-empty">
+      <div style="font-size:13px;color:#fff;letter-spacing:2px;margin-bottom:10px">NO TRACKERS SELECTED</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:20px;letter-spacing:.5px">Click tracker cards on the left to begin</div>
+      <div style="font-size:9px;color:var(--muted);letter-spacing:1px;border-top:1px solid var(--border);padding-top:14px;text-align:left">
+        <div style="display:flex;gap:10px;padding:4px 0"><span style="color:var(--cyan);min-width:10px">1</span>tracker &nbsp;&nbsp;— position + distance from origin</div>
+        <div style="display:flex;gap:10px;padding:4px 0"><span style="color:var(--cyan);min-width:10px">2</span>trackers — live distance between them</div>
+        <div style="display:flex;gap:10px;padding:4px 0"><span style="color:var(--cyan);min-width:10px">3</span>trackers — all distances + angle at middle</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -258,8 +288,8 @@
 
 <div class="statusbar">
   <div class="sb-item">STREAM <span class="sb-v" id="sb-fps">— fps</span></div>
-  <div class="sb-item">FRAMES <span class="sb-v" id="sb-frames">—</span></div>
   <div class="sb-item">TRACKERS <span class="sb-v" id="sb-trackers">0</span></div>
+  <div class="sb-item">MODE <span class="sb-v" id="sb-mode">—</span></div>
   <div class="sb-sep"></div>
   <span class="sb-msg" id="sb-msg"></span>
 </div>
@@ -291,6 +321,20 @@ async function loadRoles() {
     const r = await fetch(HTTP_BASE + '/tracker_roles.json');
     if (r.ok) { roles = await r.json(); buildTrackerList(); }
   } catch { }
+}
+
+function getRole(serial) {
+  const entry = roles[serial];
+  if (!entry) return '';
+  if (typeof entry === 'string') return entry;
+  if (typeof entry === 'object') return entry.role || '';
+  return '';
+}
+
+function detectTrackerType(serial) {
+  if (serial.toUpperCase().startsWith('LHR-')) return 'lighthouse';
+  if (serial.startsWith('41-') || serial.startsWith('42-')) return 'vut';
+  return 'unknown';
 }
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
@@ -339,13 +383,14 @@ function ingestPoses(d) {
       const slot = slotIndex++;
       trk = {
         serial, slot,
-        color: SLOT_COLORS[slot % SLOT_COLORS.length],
-        name:  'VUT-' + String(slot + 1).padStart(2, '0'),
-        pos:   { x: 0, y: 0, z: 0 },
-        status: 'tracking',
-        posBuffer: [],
-        lastNow: now,
-        velocity: 0,
+        color:       SLOT_COLORS[slot % SLOT_COLORS.length],
+        name:        'VUT-' + String(slot + 1).padStart(2, '0'),
+        trackerType: entry.tracker_type || detectTrackerType(serial),
+        pos:         { x: 0, y: 0, z: 0 },
+        status:      'tracking',
+        posBuffer:   [],
+        lastNow:     now,
+        velocity:    0,
       };
       trackers.set(serial, trk);
       listChanged = true;
@@ -382,7 +427,6 @@ function ingestPoses(d) {
 
   const meta = d.meta || {};
   document.getElementById('sb-fps').textContent      = (meta.fps ?? '—') + ' fps';
-  document.getElementById('sb-frames').textContent   = frameCount.toLocaleString();
   document.getElementById('sb-trackers').textContent = activeCount;
 }
 
@@ -398,9 +442,11 @@ function buildTrackerList() {
   selected.forEach((s, i) => selMap[s] = i + 1);
 
   for (const [serial, trk] of trackers) {
-    const role = roles[serial] || '';
-    const isSel = !!selMap[serial];
-    const isLost = trk.status === 'lost';
+    const role           = getRole(serial);
+    const isSel          = !!selMap[serial];
+    const isLost         = trk.status === 'lost';
+    const typeBadgeClass = trk.trackerType === 'lighthouse' ? 'badge-lh' : 'badge-vut';
+    const typeLabel      = trk.trackerType === 'lighthouse' ? 'LH' : 'VUT';
     const { x, y, z } = trk.pos;
     const el = document.createElement('div');
     el.className = 'trk-card' + (isSel ? ' selected' : '') + (isLost ? ' lost' : '');
@@ -411,13 +457,14 @@ function buildTrackerList() {
         <div class="tc-name">${trk.name}</div>
         ${role ? `<div class="tc-role">${esc(role)}</div>` : ''}
         ${isSel ? `<div class="sel-chip">${selMap[serial]}</div>` : ''}
+        <div class="tc-badge ${typeBadgeClass}">${typeLabel}</div>
         <div class="tc-badge ${isLost ? 'badge-lost' : 'badge-tracking'}">${isLost ? 'LOST' : 'TRACKING'}</div>
       </div>
       <div class="tc-serial">Serial: ${serial}</div>
       <div class="tc-pos" id="tcpos-${serial}">
-        <span><span class="tc-ax">X</span> ${fmtXYZ(x)}</span>
-        <span><span class="tc-ax">Y</span> ${fmtXYZ(y)}</span>
-        <span><span class="tc-ax">Z</span> ${fmtXYZ(z)}</span>
+        <span class="tc-coord"><span class="tc-ax">X</span><span>${fmtXYZ(x)}</span></span>
+        <span class="tc-coord"><span class="tc-ax">Y</span><span>${fmtXYZ(y)}</span></span>
+        <span class="tc-coord"><span class="tc-ax">Z</span><span>${fmtXYZ(z)}</span></span>
       </div>`;
     list.appendChild(el);
   }
@@ -429,9 +476,9 @@ function updateCardPositions() {
     if (!el) { buildTrackerList(); return; }
     const { x, y, z } = trk.pos;
     el.innerHTML = `
-      <span><span class="tc-ax">X</span> ${fmtXYZ(x)}</span>
-      <span><span class="tc-ax">Y</span> ${fmtXYZ(y)}</span>
-      <span><span class="tc-ax">Z</span> ${fmtXYZ(z)}</span>`;
+      <span class="tc-coord"><span class="tc-ax">X</span><span>${fmtXYZ(x)}</span></span>
+      <span class="tc-coord"><span class="tc-ax">Y</span><span>${fmtXYZ(y)}</span></span>
+      <span class="tc-coord"><span class="tc-ax">Z</span><span>${fmtXYZ(z)}</span></span>`;
   }
 }
 
@@ -484,6 +531,11 @@ function angleAtB(a, b, c) {
   return Math.acos(Math.max(-1, Math.min(1, dot/(magA*magC)))) * 180/Math.PI;
 }
 
+function distColor(d) {
+  if (d < 0.5) return 'var(--cyan)';
+  if (d < 2.0) return 'var(--amber)';
+  return 'var(--text)';
+}
 function fmtXYZ(v) { return (v >= 0 ? '+' : '') + v.toFixed(3) + 'm'; }
 function fmtM(v)   { return v.toFixed(3) + ' m'; }
 function fmtCm(v)  { return (v * 100).toFixed(1) + ' cm'; }
@@ -494,11 +546,22 @@ function esc(s)    { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 // ── Measurement panel ─────────────────────────────────────────────────────────
 function updateMeasurements() {
   const body = document.getElementById('meas-body');
+  const modeEl = document.getElementById('sb-mode');
+
   if (selected.length === 0) {
     if (lastSelKey !== '0') {
-      body.innerHTML = '<div class="meas-empty">Select trackers on the left<br>to begin measuring</div>';
+      body.innerHTML = `<div class="meas-empty">
+        <div style="font-size:13px;color:#fff;letter-spacing:2px;margin-bottom:10px">NO TRACKERS SELECTED</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:20px;letter-spacing:.5px">Click tracker cards on the left to begin</div>
+        <div style="font-size:9px;color:var(--muted);letter-spacing:1px;border-top:1px solid var(--border);padding-top:14px;text-align:left">
+          <div style="display:flex;gap:10px;padding:4px 0"><span style="color:var(--cyan);min-width:10px">1</span>tracker &nbsp;&nbsp;— position + distance from origin</div>
+          <div style="display:flex;gap:10px;padding:4px 0"><span style="color:var(--cyan);min-width:10px">2</span>trackers — live distance between them</div>
+          <div style="display:flex;gap:10px;padding:4px 0"><span style="color:var(--cyan);min-width:10px">3</span>trackers — all distances + angle at middle</div>
+        </div>
+      </div>`;
       lastSelKey = '0';
     }
+    if (modeEl) modeEl.textContent = '—';
     return;
   }
 
@@ -508,10 +571,13 @@ function updateMeasurements() {
       body.innerHTML = '<div class="meas-empty" style="color:var(--red)">Selected tracker(s) not tracking</div>';
       lastSelKey = 'lost';
     }
+    if (modeEl) modeEl.textContent = 'LOST';
     return;
   }
 
   const n = selected.length;
+  const modeLabels = ['', '1-TRACKER', '2-TRACKER', '3-TRACKER'];
+  if (modeEl) modeEl.textContent = modeLabels[n] || '—';
   if (n === 1) update1(body, selected[0]);
   else if (n === 2) update2(body, selected[0], selected[1]);
   else              update3(body, selected[0], selected[1], selected[2]);
@@ -545,11 +611,13 @@ function update1(body, sA) {
   }
 
   document.getElementById('m1-lbl').innerHTML =
-    `<span style="color:${tA.color}">●</span> <b>${tA.name}</b>${roles[sA] ? ' — ' + esc(roles[sA]) : ''}`;
+    `<span style="color:${tA.color}">●</span> <b>${tA.name}</b>${getRole(sA) ? ' — ' + esc(getRole(sA)) : ''}`;
   document.getElementById('m1-x').textContent    = fmtXYZ(pos.x);
   document.getElementById('m1-y').textContent    = fmtXYZ(pos.y);
   document.getElementById('m1-z').textContent    = fmtXYZ(pos.z);
-  document.getElementById('m1-dist').innerHTML   = d.toFixed(3) + '<span class="big-unit"> m</span>';
+  const d1El = document.getElementById('m1-dist');
+  d1El.innerHTML   = d.toFixed(3) + '<span class="big-unit"> m</span>';
+  d1El.style.color = distColor(d);
   document.getElementById('m1-cm').textContent   = fmtCm(d);
   document.getElementById('m1-vel').innerHTML    = vel.toFixed(1) + '<span class="big-unit" style="font-size:22px"> mm/s</span>';
 
@@ -588,7 +656,9 @@ function update2(body, sA, sB) {
 
   document.getElementById('m2-lbl').innerHTML =
     `<span style="color:${tA.color}">●</span> <b>${tA.name}</b> &nbsp;↔&nbsp; <span style="color:${tB.color}">●</span> <b>${tB.name}</b>`;
-  document.getElementById('m2-dist').innerHTML = d.toFixed(3) + '<span class="big-unit"> m</span>';
+  const d2El = document.getElementById('m2-dist');
+  d2El.innerHTML   = d.toFixed(3) + '<span class="big-unit"> m</span>';
+  d2El.style.color = distColor(d);
   document.getElementById('m2-cm').textContent = fmtCm(d);
   document.getElementById('m2-mm').innerHTML   =
     `<span>Min <b>${fmtM(minDist)}</b></span><span>Max <b>${fmtM(maxDist)}</b></span>`;
@@ -642,9 +712,12 @@ function update3(body, sA, sB, sC) {
   document.getElementById('m3-lAB').innerHTML = colorDot(tA) + ` ${tA.name} ↔ ` + colorDot(tB) + ` ${tB.name}`;
   document.getElementById('m3-lBC').innerHTML = colorDot(tB) + ` ${tB.name} ↔ ` + colorDot(tC) + ` ${tC.name}`;
   document.getElementById('m3-lAC').innerHTML = colorDot(tA) + ` ${tA.name} ↔ ` + colorDot(tC) + ` ${tC.name}`;
-  document.getElementById('m3-dAB').textContent  = fmtM(dAB);
-  document.getElementById('m3-dBC').textContent  = fmtM(dBC);
-  document.getElementById('m3-dAC').textContent  = fmtM(dAC);
+  const dABEl = document.getElementById('m3-dAB');
+  const dBCEl = document.getElementById('m3-dBC');
+  const dACEl = document.getElementById('m3-dAC');
+  dABEl.textContent = fmtM(dAB); dABEl.style.color = distColor(dAB);
+  dBCEl.textContent = fmtM(dBC); dBCEl.style.color = distColor(dBC);
+  dACEl.textContent = fmtM(dAC); dACEl.style.color = distColor(dAC);
   document.getElementById('m3-b-name').textContent = tB.name;
   document.getElementById('m3-ang').innerHTML    = ang.toFixed(1) + '<span class="big-unit">°</span>';
   document.getElementById('m3-mm').innerHTML     =
@@ -690,7 +763,7 @@ function saveCSV() {
 
 function clearHistory() {
   historyLog = [];
-  document.getElementById('history-log').innerHTML = '<span style="color:#333">No measurements yet.</span>';
+  document.getElementById('history-log').innerHTML = '<span style="color:var(--muted);opacity:.6">No measurements yet.</span>';
 }
 
 function showBanner(msg, type) {

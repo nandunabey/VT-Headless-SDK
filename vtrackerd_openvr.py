@@ -35,11 +35,41 @@ HTTP_PORT   = 8080
 POLL_HZ     = 100
 SDK_VERSION = "0.2"
 
+
+def get_tracker_type(serial: str) -> str:
+    """Detect tracker type from serial number format."""
+    if serial.upper().startswith("LHR-"):
+        return "lighthouse"
+    elif serial.startswith(("41-", "42-")):
+        return "vut"
+    else:
+        return "unknown"
+
+
 VUT_SDK_DIR   = Path(__file__).resolve().parent          # C:\Users\vive_\dev\vut-sdk
 ROLES_FILE    = VUT_SDK_DIR / "tracker_roles.json"
 RECORDINGS_DIR = VUT_SDK_DIR / "recordings"
 ANCHORS_FILE   = VUT_SDK_DIR / "anchors.json"
+SCAN_DIR      = VUT_SDK_DIR / "scan_app"
+SCAN_HTML     = SCAN_DIR / "scan.html"
+SESSIONS_DIR  = VUT_SDK_DIR / "sessions"
+MAP_DIR_VIVE  = Path(
+    r"C:\ProgramData\HTC\ViveSoftware\VBStorage\VBPManager\Files"
+)
 
+
+# ---------------------------------------------------------------------------
+# Tracker list — populated once in main() after OpenVR enumerate
+# ---------------------------------------------------------------------------
+_trackers: list = []    # [{"index": int, "serial": str, "model": str}, …]
+
+# ---------------------------------------------------------------------------
+# Map-file watcher state  (thread-safe via _watcher_lock)
+# ---------------------------------------------------------------------------
+_watcher_lock     = threading.Lock()
+_watcher_active   = False
+_watcher_baseline: set = set()          # ZIP paths present when watcher was armed
+_loop: asyncio.AbstractEventLoop | None = None   # set inside _run()
 
 # ---------------------------------------------------------------------------
 # Recording state (accessed only from HTTP thread via threading.Lock)
@@ -73,7 +103,19 @@ class _HttpHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = self._clean_path()
-        if path == "/recorder/sessions":
+        if path == "/scan":
+            self._serve_scan_html()
+        elif path == "/api/trackers":
+            self._get_api_trackers()
+        elif path == "/api/mapfiles":
+            self._get_api_mapfiles()
+        elif path == "/api/sessions":
+            self._get_api_scan_sessions()
+        elif path.startswith("/api/sessions/"):
+            self._get_api_scan_session(path[len("/api/sessions/"):])
+        elif path == "/api/scan/watch/status":
+            self._get_watch_status()
+        elif path == "/recorder/sessions":
             self._get_sessions()
         elif path == "/calibration/anchors":
             self._get_calibration_anchors()
@@ -91,7 +133,10 @@ class _HttpHandler(SimpleHTTPRequestHandler):
             "/recorder/stop_playback":   self._post_rec_stop_playback,
             "/recorder/export/csv":      self._post_export_csv,
             "/recorder/export/json":     self._post_export_json,
-            "/calibration/save-anchors": self._post_save_anchors,
+            "/calibration/save-anchors":  self._post_save_anchors,
+            "/api/session":               self._post_api_session,
+            "/api/scan/watch/start":      self._post_watch_start,
+            "/api/scan/watch/stop":       self._post_watch_stop,
         }
         handler = routes.get(path)
         if handler is None:
@@ -104,11 +149,18 @@ class _HttpHandler(SimpleHTTPRequestHandler):
         body = self._read_body()
         try:
             roles = json.loads(body)
-            if not isinstance(roles, dict) or not all(
-                isinstance(k, str) and isinstance(v, str)
-                for k, v in roles.items()
-            ):
-                raise ValueError("Expected dict of string → string")
+            if not isinstance(roles, dict):
+                raise ValueError("Expected dict")
+            for k, v in roles.items():
+                if not isinstance(k, str):
+                    raise ValueError("Keys must be strings")
+                if isinstance(v, str):
+                    pass  # old format — accept as-is
+                elif isinstance(v, dict):
+                    if "role" not in v or not isinstance(v.get("role"), str):
+                        raise ValueError(f"Object value for '{k}' must have string 'role' key")
+                else:
+                    raise ValueError(f"Value for '{k}' must be string or object")
             with open(ROLES_FILE, "w") as fh:
                 json.dump(roles, fh, indent=2)
             self._json_resp({"status": "ok"})
@@ -186,7 +238,9 @@ class _HttpHandler(SimpleHTTPRequestHandler):
                     for fl in frame_lines[:10]:
                         poses = json.loads(fl).get("poses", {})
                         serials.update(poses.keys())
-                    info["trackers"] = len(serials)
+                    info["trackers"]         = len(serials)
+                    info["vut_count"]        = sum(1 for s in serials if get_tracker_type(s) == "vut")
+                    info["lighthouse_count"] = sum(1 for s in serials if get_tracker_type(s) == "lighthouse")
             except Exception:
                 pass
             sessions.append(info)
@@ -267,29 +321,22 @@ class _HttpHandler(SimpleHTTPRequestHandler):
             frame_rows.append((obj["timestamp"], poses))
 
         buf = io.StringIO()
-        pos_headers = []
-        for s in serials:
-            for ax in ["x", "y", "z"]:
-                pos_headers.append(f"{s}_pos_{ax}")
-            for ax in ["w", "x", "y", "z"]:
-                pos_headers.append(f"{s}_rot_{ax}")
-            pos_headers.append(f"{s}_battery_pct")
-
         writer = csv.writer(buf)
-        writer.writerow(["timestamp"] + pos_headers)
+        writer.writerow(["timestamp", "serial", "tracker_type",
+                         "x", "y", "z", "qw", "qx", "qy", "qz", "battery_pct"])
         for ts, poses in frame_rows:
-            row = [ts]
             for s in serials:
                 p = poses.get(s)
-                if p:
-                    pos = p.get("position", {})
-                    rot = p.get("rotation", {})
-                    row += [pos.get("x",""), pos.get("y",""), pos.get("z",""),
-                            rot.get("w",""), rot.get("x",""), rot.get("y",""), rot.get("z",""),
-                            p.get("battery_pct", "")]
-                else:
-                    row += [""] * 8
-            writer.writerow(row)
+                if not p:
+                    continue
+                pos = p.get("position", {})
+                rot = p.get("rotation", {})
+                writer.writerow([
+                    ts, s, get_tracker_type(s),
+                    pos.get("x", ""), pos.get("y", ""), pos.get("z", ""),
+                    rot.get("w", ""), rot.get("x", ""), rot.get("y", ""), rot.get("z", ""),
+                    p.get("battery_pct", ""),
+                ])
 
         data_bytes = buf.getvalue().encode()
         outname    = fname.replace(".vut", ".csv")
@@ -352,6 +399,136 @@ class _HttpHandler(SimpleHTTPRequestHandler):
         except Exception as exc:
             self._json_resp({"status": "error", "message": str(exc)}, 400)
 
+    # ── /scan ────────────────────────────────────────────────────────────────
+    def _serve_scan_html(self):
+        if not SCAN_HTML.is_file():
+            self._json_resp({"error": "scan.html not found — create scan_app/scan.html"}, 404)
+            return
+        data = SCAN_HTML.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type",   "text/html; charset=utf-8")
+        self.send_header("Content-Length", len(data))
+        self.send_header("Cache-Control",  "no-cache")
+        self.end_headers()
+        self.wfile.write(data)
+
+    # ── /api/trackers ─────────────────────────────────────────────────────────
+    def _get_api_trackers(self):
+        # Extract latest battery / tracking state from the live pose snapshot.
+        poses: dict = {}
+        if _latest_msg:
+            try:
+                frame = json.loads(_latest_msg)
+                poses = {k: v for k, v in frame.items() if k != "meta"}
+            except Exception:
+                pass
+        out = []
+        for trk in _trackers:
+            serial = trk["serial"]
+            pose   = poses.get(serial, {})
+            out.append({
+                "serial":       serial,
+                "model":        trk.get("model", ""),
+                "tracker_type": trk.get("tracker_type", get_tracker_type(serial)),
+                "index":        trk.get("index"),
+                "battery_pct":  pose.get("battery_pct"),
+                "tracking":     bool(pose),
+            })
+        self._json_resp({"trackers": out, "count": len(out)})
+
+    # ── /api/mapfiles ─────────────────────────────────────────────────────────
+    def _get_api_mapfiles(self):
+        files = []
+        if MAP_DIR_VIVE.exists():
+            for z in sorted(
+                MAP_DIR_VIVE.rglob("*.zip"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            ):
+                try:
+                    st = z.stat()
+                    files.append({
+                        "name":        z.name,
+                        "path":        str(z),
+                        "size_bytes":  st.st_size,
+                        "modified":    round(st.st_mtime, 3),
+                    })
+                except Exception:
+                    pass
+        self._json_resp({"map_files": files, "count": len(files)})
+
+    # ── /api/session (POST) ───────────────────────────────────────────────────
+    def _post_api_session(self):
+        body = self._read_body()
+        try:
+            data = json.loads(body)
+            sid  = data.get("id") or time.strftime("%Y%m%d_%H%M%S")
+            SESSIONS_DIR.mkdir(exist_ok=True)
+            fpath = SESSIONS_DIR / f"session_{sid}.json"
+            fpath.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+            self._json_resp({"status": "ok", "id": sid, "file": fpath.name})
+        except Exception as exc:
+            self._json_resp({"status": "error", "message": str(exc)}, 400)
+
+    # ── /api/sessions (GET) ───────────────────────────────────────────────────
+    def _get_api_scan_sessions(self):
+        SESSIONS_DIR.mkdir(exist_ok=True)
+        sessions = []
+        for f in sorted(
+            SESSIONS_DIR.glob("session_*.json"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        ):
+            try:
+                sessions.append(json.loads(f.read_text()))
+            except Exception:
+                sessions.append({"file": f.name, "error": "parse failed"})
+        self._json_resp({"sessions": sessions, "count": len(sessions)})
+
+    # ── /api/sessions/<id> (GET) ──────────────────────────────────────────────
+    def _get_api_scan_session(self, sid: str):
+        SESSIONS_DIR.mkdir(exist_ok=True)
+        candidates = [
+            SESSIONS_DIR / f"session_{sid}.json",
+            SESSIONS_DIR / sid,
+        ]
+        for c in candidates:
+            if c.is_file():
+                try:
+                    self._json_resp(json.loads(c.read_text()))
+                    return
+                except Exception:
+                    break
+        self._json_resp({"error": "session not found", "id": sid}, 404)
+
+    # ── /api/scan/watch/* ─────────────────────────────────────────────────────
+    def _get_watch_status(self):
+        with _watcher_lock:
+            self._json_resp({
+                "active":         _watcher_active,
+                "baseline_count": len(_watcher_baseline),
+            })
+
+    def _post_watch_start(self):
+        global _watcher_active, _watcher_baseline
+        try:
+            zips = {str(p) for p in MAP_DIR_VIVE.rglob("*.zip")} \
+                   if MAP_DIR_VIVE.exists() else set()
+        except Exception:
+            zips = set()
+        with _watcher_lock:
+            _watcher_active  = True
+            _watcher_baseline = zips
+        print(f"\n  [map watcher] armed — baseline {len(zips)} ZIP(s)")
+        self._json_resp({"status": "ok", "baseline_count": len(zips)})
+
+    def _post_watch_stop(self):
+        global _watcher_active
+        with _watcher_lock:
+            _watcher_active = False
+        print(f"\n  [map watcher] disarmed")
+        self._json_resp({"status": "ok"})
+
     # ── Helpers ───────────────────────────────────────────────────────────────
     def _read_body(self) -> bytes:
         length = int(self.headers.get("Content-Length", 0))
@@ -368,6 +545,57 @@ class _HttpHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, *_):
         pass
+
+
+async def _broadcast(msg: str) -> None:
+    """Push an arbitrary JSON string to every connected WebSocket client."""
+    dead = set()
+    for ws in list(_clients):
+        try:
+            await ws.send(msg)
+        except Exception:
+            dead.add(ws)
+    _clients.difference_update(dead)
+
+
+def _start_map_watcher() -> None:
+    """Daemon thread: poll MAP_DIR_VIVE every 2 s; push WS event for new ZIPs."""
+    def _run():
+        while True:
+            time.sleep(2.0)
+            with _watcher_lock:
+                if not _watcher_active:
+                    continue
+                baseline = set(_watcher_baseline)
+            if not MAP_DIR_VIVE.exists():
+                continue
+            try:
+                current = {str(p) for p in MAP_DIR_VIVE.rglob("*.zip")}
+            except Exception:
+                continue
+            new = current - baseline
+            if not new or _loop is None:
+                continue
+            with _watcher_lock:
+                _watcher_baseline.update(new)
+            for path_str in sorted(new):
+                p = Path(path_str)
+                try:
+                    size = p.stat().st_size
+                except Exception:
+                    size = 0
+                msg = json.dumps({
+                    "type":       "map_file_new",
+                    "name":       p.name,
+                    "path":       path_str,
+                    "size_bytes": size,
+                    "t":          time.time(),
+                })
+                asyncio.run_coroutine_threadsafe(_broadcast(msg), _loop)
+                print(f"\n  [map watcher] new ZIP: {p.name}  ({size // 1024} KB)")
+
+    threading.Thread(target=_run, daemon=True, name="map-watcher").start()
+    print(f"Map watcher      ->  polling {MAP_DIR_VIVE.name}/ every 2 s")
 
 
 def _start_http() -> None:
@@ -495,8 +723,9 @@ async def _main_loop(vr, trackers, broadcast_hz: int):
                     },
                     "timestamp":     time.time(),
                     "battery_pct":   battery_pct,
-                    "session_index": idx,    # informational only — do not key on this
-                    "model":         model,  # informational only
+                    "session_index": idx,
+                    "model":         model,
+                    "tracker_type":  trk.get("tracker_type", get_tracker_type(serial)),
                 }
                 any_valid = True
 
@@ -513,9 +742,11 @@ async def _main_loop(vr, trackers, broadcast_hz: int):
 
             payload = dict(serial_poses)
             payload["meta"] = {
-                "fps":           broadcast_hz,
-                "latency_ms":    latency_ms,
-                "tracker_count": len(serial_poses),
+                "fps":              broadcast_hz,
+                "latency_ms":       latency_ms,
+                "tracker_count":    len(serial_poses),
+                "vut_count":        sum(1 for s in serial_poses if get_tracker_type(s) == "vut"),
+                "lighthouse_count": sum(1 for s in serial_poses if get_tracker_type(s) == "lighthouse"),
             }
             _latest_msg = json.dumps(payload)
 
@@ -595,20 +826,28 @@ def main():
                     i, openvr.Prop_ModelNumber_String)
             except Exception:
                 model = "?"
-            print(f"  Tracker [{i}]  serial={serial}  model={model}")
-            trackers.append({"index": i, "serial": serial, "model": model})
+            ttype      = get_tracker_type(serial)
+            type_label = "LH" if ttype == "lighthouse" else "VUT" if ttype == "vut" else "???"
+            print(f"  Tracker [{i}]  serial={serial}  type={type_label:<4}  model={model}")
+            trackers.append({"index": i, "serial": serial, "model": model, "tracker_type": ttype})
 
     if not trackers:
         print("No GenericTrackers found — is SteamVR running with trackers active?")
         openvr.shutdown()
         sys.exit(1)
 
+    global _trackers
+    _trackers = trackers          # expose to HTTP handlers via module-level ref
+
     print(f"\n  {len(trackers)} tracker(s) found")
     print(f"  [OK] Broadcast rate  : {args.fps} fps (~{latency_ms}ms latency)")
 
     _start_http()
+    _start_map_watcher()
 
     async def _run():
+        global _loop
+        _loop = asyncio.get_event_loop()
         async with websockets.serve(_ws_handler, WS_HOST, WS_PORT):
             print(f"WebSocket server  ->  ws://localhost:{WS_PORT}")
             print(f"Polling at {POLL_HZ} Hz, broadcasting at {args.fps} fps\n")

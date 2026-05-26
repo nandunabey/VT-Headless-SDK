@@ -14,7 +14,7 @@
     --red:    #ff4444;
     --green:  #00e676;
     --text:   #cccccc;
-    --muted:  #888888;
+    --muted:  #aaaaaa;
   }
 
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -26,13 +26,13 @@
     height: 100vh;
     overflow: hidden;
     display: grid;
-    grid-template-rows: 46px 1fr 30px;
+    grid-template-rows: 46px auto 1fr 30px;
     grid-template-columns: 320px 1fr;
   }
 
   /* ── Header ── */
   header {
-    grid-column: 1 / -1;
+    grid-row: 1; grid-column: 1 / -1;
     background: var(--panel);
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center;
@@ -49,20 +49,21 @@
   .conn-dot.waiting      { background: var(--muted); }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
   .h-back {
-    font-size: 9px; color: var(--muted); text-decoration: none;
+    font-size: 9px; color: var(--text); text-decoration: none;
     letter-spacing: 1px; padding: 4px 8px;
-    border: 1px solid var(--border); border-radius: 2px;
-    transition: color .2s, border-color .2s;
+    border: 1px solid #3a3a3a; border-radius: 2px;
+    transition: color .2s, border-color .2s; opacity: .75;
   }
-  .h-back:hover { color: var(--cyan); border-color: var(--cyan); }
+  .h-back:hover { color: var(--cyan); border-color: var(--cyan); opacity: 1; }
 
   /* ── Columns ── */
   .left-col {
+    grid-row: 3; grid-column: 1;
     background: var(--panel);
     border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; overflow: hidden;
+    display: flex; flex-direction: column; overflow: hidden; min-height: 0;
   }
-  .right-col { display: flex; flex-direction: column; overflow: hidden; }
+  .right-col { grid-row: 3; grid-column: 2; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
   .col-scroll { flex: 1; overflow-y: auto; }
   .col-scroll::-webkit-scrollbar { width: 3px; }
   .col-scroll::-webkit-scrollbar-thumb { background: var(--border); }
@@ -70,12 +71,12 @@
   /* ── Sections ── */
   .section { padding: 13px 16px; border-bottom: 1px solid var(--border); }
   .section-title {
-    font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
     color: #ffffff; margin-bottom: 12px;
   }
   .sub-label {
-    font-size: 9px; color: var(--muted); letter-spacing: 1px;
-    text-transform: uppercase; margin-bottom: 6px; margin-top: 2px;
+    font-size: 9px; color: var(--text); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 6px; margin-top: 10px;
   }
 
   /* ── Origin badge ── */
@@ -101,6 +102,8 @@
   .trk-name { color: #fff; width: 46px; flex-shrink: 0; }
   .trk-xyz  { color: var(--text); flex: 1; font-size: 9px; }
   .trk-row.lost { opacity: .45; }
+  .badge-vut { font-size: 7px; padding: 1px 4px; border-radius: 2px; background: rgba(0,255,204,.1); border: 1px solid var(--cyan); color: var(--cyan); letter-spacing: 1px; flex-shrink: 0; }
+  .badge-lh  { font-size: 7px; padding: 1px 4px; border-radius: 2px; background: rgba(255,170,0,.1);  border: 1px solid var(--amber); color: var(--amber); letter-spacing: 1px; flex-shrink: 0; }
 
   /* ── Buttons ── */
   .btn-row { display: flex; gap: 8px; margin-top: 10px; }
@@ -113,22 +116,22 @@
   .btn:disabled { opacity: .35; cursor: default; }
   .btn-primary  { border: 1px solid var(--cyan);   color: var(--cyan); }
   .btn-primary:hover:not(:disabled)  { background: rgba(0,255,204,.1); }
-  .btn-secondary { border: 1px solid var(--border); color: var(--muted); }
-  .btn-secondary:hover:not(:disabled) { border-color: #555; color: var(--text); background: rgba(255,255,255,.03); }
+  .btn-secondary { border: 1px solid #3a3a3a; color: var(--text); opacity: .75; }
+  .btn-secondary:hover:not(:disabled) { border-color: #666; opacity: 1; background: rgba(255,255,255,.04); }
   .btn-icon {
     font-size: 11px; padding: 3px 7px;
-    border: 1px solid var(--border); color: var(--muted);
+    border: 1px solid #333; color: var(--text);
     background: transparent; cursor: pointer; border-radius: 2px;
-    transition: color .15s, border-color .15s;
+    opacity: .7; transition: opacity .15s, border-color .15s;
   }
-  .btn-icon:hover { color: var(--text); border-color: #555; }
+  .btn-icon:hover { opacity: 1; border-color: #555; }
 
   /* ── Note input ── */
   .note-row { margin: 10px 0 0; }
   .form-input {
-    background: #0d0d0d; border: 1px solid var(--border);
+    background: #161616; border: 1px solid #333;
     border-radius: 2px; color: var(--text); font-family: monospace;
-    font-size: 10px; padding: 5px 8px; outline: none;
+    font-size: 10px; padding: 6px 8px; outline: none;
     transition: border-color .15s; width: 100%;
   }
   .form-input:focus { border-color: var(--cyan); }
@@ -152,9 +155,9 @@
     border-top: 1px solid var(--border); flex-wrap: wrap;
   }
   .form-select {
-    background: #0d0d0d; border: 1px solid var(--border);
+    background: #161616; border: 1px solid #333;
     border-radius: 2px; color: var(--text); font-family: monospace;
-    font-size: 10px; padding: 5px 8px; outline: none; cursor: pointer;
+    font-size: 10px; padding: 6px 8px; outline: none; cursor: pointer;
   }
   .form-select:focus { border-color: var(--cyan); }
   .inp-name   { flex: 1; min-width: 90px; }
@@ -168,10 +171,10 @@
 
   /* ── Status bar ── */
   .statusbar {
-    grid-column: 1 / -1;
+    grid-row: 4; grid-column: 1 / -1;
     background: var(--panel); border-top: 1px solid var(--border);
     display: flex; align-items: center; padding: 0 14px; gap: 16px;
-    font-size: 9px; color: var(--muted); letter-spacing: 1px;
+    font-size: 9px; color: var(--text); letter-spacing: 1px;
   }
   .sb-item { display: flex; align-items: center; gap: 5px; }
   .sb-v    { color: var(--text); font-weight: 500; }
@@ -181,14 +184,14 @@
   .sb-msg.err { color: var(--red); }
 
   /* ── How-to ── */
-  .howto-bar { background: #111; border-bottom: 1px solid #1e1e1e; padding: 0 20px; position: relative; z-index: 1; }
+  .howto-bar { grid-row: 2; grid-column: 1 / -1; background: var(--panel); border-bottom: 1px solid var(--border); padding: 0 20px; }
   .howto-toggle { background: none; border: none; color: #00ffcc; font-family: monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; padding: 7px 0; opacity: .6; }
   .howto-toggle:hover { opacity: 1; }
-  .howto-panel { display: none; padding: 14px 0 16px; font-size: 11px; color: #999; line-height: 1.85; border-top: 1px solid #1a1a1a; }
+  .howto-panel { display: none; padding: 14px 0 16px; font-size: 11px; color: var(--text); line-height: 1.85; border-top: 1px solid var(--border); }
   .howto-panel.open { display: block; }
-  .howto-head { color: #00ffcc; letter-spacing: 1px; text-transform: uppercase; font-size: 10px; margin: 10px 0 3px; }
+  .howto-head { color: var(--cyan); letter-spacing: 1px; text-transform: uppercase; font-size: 10px; margin: 10px 0 3px; }
   .howto-head:first-child { margin-top: 0; }
-  .howto-tip { color: #666; font-style: italic; margin-top: 8px; }
+  .howto-tip { color: var(--muted); font-style: italic; margin-top: 8px; }
 
   /* ── Banner stack ── */
   #banner-stack { position: fixed; top: 46px; left: 0; right: 0; z-index: 1000; display: flex; flex-direction: column; pointer-events: none; }
@@ -209,7 +212,7 @@
   <div class="conn-status">
     <div class="conn-dot waiting" id="conn-dot"></div>
     <span id="conn-text" style="color:var(--muted)">WAITING</span>
-    <span style="color:#444;font-size:9px">&nbsp;ws://localhost:8765</span>
+    <span style="color:var(--muted);font-size:9px">&nbsp;ws://localhost:8765</span>
   </div>
   <a href="http://localhost:8080/visualiser.html" class="h-back">← VISUALISER</a>
 </header>
@@ -318,9 +321,15 @@ const HTTP_BASE   = 'http://localhost:8080';
 const SLOT_COLORS = ['#00ffcc', '#ffaa00', '#ff4444', '#4a9eff'];
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const trackers = new Map(); // serial → {name, color, pos, status}
+const trackers = new Map(); // serial → {name, color, pos, status, trackerType}
 let slotIndex  = 0;
 let frameCount = 0;
+
+function detectTrackerType(serial) {
+  if (serial.toUpperCase().startsWith('LHR-')) return 'lighthouse';
+  if (serial.startsWith('41-') || serial.startsWith('42-')) return 'vut';
+  return 'unknown';
+}
 
 let anchors = { origin: null, anchors: {}, zones: {} };
 
@@ -416,10 +425,11 @@ function ingestPoses(d) {
       const slot = slotIndex++;
       trk = {
         serial, slot,
-        color: SLOT_COLORS[slot % SLOT_COLORS.length],
-        name:  'VUT-' + String(slot + 1).padStart(2, '0'),
-        pos:   { x: 0, y: 0, z: 0 },
-        status: 'tracking',
+        color:       SLOT_COLORS[slot % SLOT_COLORS.length],
+        name:        'VUT-' + String(slot + 1).padStart(2, '0'),
+        trackerType: entry.tracker_type || detectTrackerType(serial),
+        pos:         { x: 0, y: 0, z: 0 },
+        status:      'tracking',
       };
       trackers.set(serial, trk);
       changed = true;
@@ -447,11 +457,14 @@ function renderTrackerList() {
   if (!trackers.size) { el.innerHTML = '<div class="empty">Waiting for tracker data…</div>'; return; }
   el.innerHTML = '';
   for (const [serial, trk] of trackers) {
+    const typeBadgeClass = trk.trackerType === 'lighthouse' ? 'badge-lh' : 'badge-vut';
+    const typeLabel      = trk.trackerType === 'lighthouse' ? 'LH' : 'VUT';
     const row = document.createElement('div');
     row.className = 'trk-row' + (trk.status === 'lost' ? ' lost' : '');
     row.innerHTML = `
       <div class="trk-dot" style="background:${trk.color};box-shadow:0 0 4px ${trk.color}88"></div>
       <div class="trk-name">${trk.name}</div>
+      <div class="${typeBadgeClass}">${typeLabel}</div>
       <div class="trk-xyz" id="tpos-${serial}">${fmtXYZ(trk.pos)}</div>`;
     el.appendChild(row);
   }
@@ -519,7 +532,7 @@ function renderOrigin() {
     coords.style.display = 'block';
     coords.innerHTML =
       `X: <b>${o.x.toFixed(4)}</b>&nbsp; Y: <b>${o.y.toFixed(4)}</b>&nbsp; Z: <b>${o.z.toFixed(4)}</b>` +
-      (o.note ? `<br><span style="color:#666;font-size:9px">${esc(o.note)}</span>` : '');
+      (o.note ? `<br><span style="color:var(--muted);font-size:9px">${esc(o.note)}</span>` : '');
     sb.textContent = 'CUSTOM';
   }
 }
@@ -559,7 +572,7 @@ function renderAnchorList() {
   if (!keys.length) { el.innerHTML = '<div class="empty">No anchors saved yet.</div>'; return; }
   el.innerHTML = keys.map(name => {
     const a  = anchors.anchors[name];
-    const dt = a.set_at ? `<br><span style="color:#444;font-size:8px">${new Date(a.set_at).toLocaleString()}</span>` : '';
+    const dt = a.set_at ? `<br><span style="color:var(--muted);font-size:9px">${new Date(a.set_at).toLocaleString()}</span>` : '';
     return `<div class="anchor-row">
       <div class="anchor-name">${esc(name)}</div>
       <div class="anchor-detail">
@@ -606,7 +619,7 @@ function renderZoneList() {
   if (!keys.length) { el.innerHTML = '<div class="empty">No zones saved yet.</div>'; return; }
   el.innerHTML = keys.map(name => {
     const z  = zones[name];
-    const dt = z.set_at ? `<br><span style="color:#444;font-size:8px">${new Date(z.set_at).toLocaleString()}</span>` : '';
+    const dt = z.set_at ? `<br><span style="color:var(--muted);font-size:9px">${new Date(z.set_at).toLocaleString()}</span>` : '';
     return `<div class="zone-row">
       <div class="zone-name">${esc(name)}</div>
       <div class="anchor-detail">

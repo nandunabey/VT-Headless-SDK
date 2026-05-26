@@ -95,6 +95,7 @@
     display: grid;
     grid-template-columns: 320px 1fr;
     overflow: hidden;
+    min-height: 0;
   }
 
   /* ── Left column (RECORD + EXPORT) ── */
@@ -103,6 +104,7 @@
     flex-direction: column;
     border-right: 1px solid var(--border);
     overflow: hidden;
+    min-height: 0;
   }
 
   /* ── Panel sections ── */
@@ -112,9 +114,9 @@
   }
   .section-title {
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 10px;
     color: #ffffff;
-    letter-spacing: 3px;
+    letter-spacing: 4px;
     text-transform: uppercase;
     margin-bottom: 12px;
   }
@@ -168,8 +170,15 @@
     flex: 1;
   }
   .btn-rec:hover:not(:disabled) { background: rgba(255,82,82,.1); }
-  .btn-rec.active { background: rgba(255,82,82,.15); animation: rec-pulse 1.2s infinite; }
-  @keyframes rec-pulse { 0%,100%{border-color:var(--red)} 50%{border-color:rgba(255,82,82,.4)} }
+  .btn-rec.active {
+    background: rgba(255,82,82,.2); color: #fff; border-color: var(--red);
+    box-shadow: 0 0 14px rgba(255,82,82,.3);
+    animation: rec-pulse 1.2s infinite;
+  }
+  @keyframes rec-pulse {
+    0%,100% { box-shadow: 0 0 10px rgba(255,82,82,.3); border-color: var(--red); background: rgba(255,82,82,.18); }
+    50%      { box-shadow: 0 0 24px rgba(255,82,82,.6); border-color: rgba(255,82,82,.7); background: rgba(255,82,82,.28); }
+  }
 
   .btn-stop {
     border-color: var(--muted);
@@ -270,6 +279,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
   }
 
   .playback-header {
@@ -278,13 +288,14 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex-shrink: 0;
   }
 
   .playback-title {
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 10px;
     color: #ffffff;
-    letter-spacing: 3px;
+    letter-spacing: 4px;
     text-transform: uppercase;
   }
 
@@ -335,16 +346,17 @@
   }
   .scrub-bar {
     flex: 1;
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
+    height: 6px;
+    background: #162030;
+    border: 1px solid var(--border);
+    border-radius: 3px;
     position: relative;
     cursor: pointer;
   }
   .scrub-fill {
     height: 100%;
     background: var(--accent);
-    border-radius: 2px;
+    border-radius: 3px;
     transition: width .1s;
     pointer-events: none;
   }
@@ -352,18 +364,22 @@
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 10px;
-    height: 10px;
-    background: var(--text);
+    width: 12px;
+    height: 12px;
+    background: var(--accent);
     border-radius: 50%;
     pointer-events: none;
-    transition: left .1s;
+    transition: left .1s, transform .15s;
+    box-shadow: 0 0 6px rgba(74,158,255,.5);
   }
+  .scrub-bar:hover .scrub-handle { transform: translate(-50%, -50%) scale(1.25); }
   .scrub-time {
     font-family: var(--font-mono);
     font-size: 9px;
     color: var(--muted);
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    min-width: 34px;
   }
 
   /* ── Session list ── */
@@ -380,9 +396,15 @@
     text-align: center;
     font-family: var(--font-mono);
     font-size: 10px;
-    color: var(--muted);
-    padding: 40px 0;
+    color: var(--text);
+    padding: 28px 24px;
     letter-spacing: 1px;
+    line-height: 2;
+    border: 1px solid #1e2d3f;
+    border-top: 2px solid rgba(0,229,255,.2);
+    border-radius: 3px;
+    background: rgba(255,255,255,.008);
+    margin: 12px;
   }
 
   .session-item {
@@ -391,11 +413,11 @@
     padding: 10px 12px;
     margin-bottom: 6px;
     cursor: pointer;
-    transition: border-color .2s, background .2s;
+    transition: border-color .2s, background .2s, padding-left .15s;
   }
-  .session-item:hover { border-color: #2a3a50; background: rgba(74,158,255,.03); }
-  .session-item.selected { border-color: var(--accent); background: rgba(74,158,255,.06); }
-  .session-item.playing  { border-color: var(--green);  background: rgba(0,230,118,.04); }
+  .session-item:hover { border-color: #2a3a50; background: rgba(74,158,255,.04); }
+  .session-item.selected { border-color: var(--accent); border-left-width: 3px; padding-left: 10px; background: rgba(74,158,255,.07); }
+  .session-item.playing  { border-color: var(--green);  border-left-width: 3px; padding-left: 10px; background: rgba(0,230,118,.05); }
 
   .si-top {
     display: flex;
@@ -424,9 +446,10 @@
     font-size: 9px;
     color: var(--muted);
     flex-wrap: wrap;
+    font-variant-numeric: tabular-nums;
   }
   .si-meta span { white-space: nowrap; }
-  .si-meta .hi { color: var(--accent); }
+  .si-meta .hi { color: var(--accent); font-weight: 500; }
 
   /* ── Status bar ── */
   .statusbar {
@@ -438,7 +461,7 @@
     border-top: 1px solid var(--border);
     font-family: var(--font-mono);
     font-size: 9px;
-    color: var(--muted);
+    color: var(--text);
     letter-spacing: 1px;
   }
   .sb-item { display: flex; align-items: center; gap: 5px; }
@@ -448,15 +471,23 @@
   .sb-msg.ok  { color: var(--green); }
   .sb-msg.err { color: var(--red); }
 
-  /* ── How-to ── */
-  .howto-bar { background: #111; border-bottom: 1px solid #1e1e1e; padding: 0 20px; }
-  .howto-toggle { background: none; border: none; color: #00ffcc; font-family: monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; padding: 7px 0; opacity: .6; }
+  /* ── How-to (fixed overlay — does not affect grid) ── */
+  .howto-bar {
+    position: fixed; top: 46px; left: 0; right: 0; z-index: 200;
+    background: var(--panel); border-bottom: 1px solid var(--border); padding: 0 20px;
+    transition: box-shadow .2s, border-bottom-color .2s;
+  }
+  .howto-bar.open {
+    border-bottom-color: rgba(0,229,255,.3);
+    box-shadow: 0 8px 32px rgba(0,0,0,.8);
+  }
+  .howto-toggle { background: none; border: none; color: var(--cyan); font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; padding: 7px 0; opacity: .6; }
   .howto-toggle:hover { opacity: 1; }
-  .howto-panel { display: none; padding: 14px 0 16px; font-size: 11px; color: #999; line-height: 1.85; border-top: 1px solid #1a1a1a; }
+  .howto-panel { display: none; padding: 14px 0 16px; font-size: 11px; color: var(--text); line-height: 1.85; border-top: 1px solid var(--border); font-family: var(--font-mono); }
   .howto-panel.open { display: block; }
-  .howto-head { color: #00ffcc; letter-spacing: 1px; text-transform: uppercase; font-size: 10px; margin: 10px 0 3px; }
+  .howto-head { color: var(--cyan); letter-spacing: 1px; text-transform: uppercase; font-size: 10px; margin: 10px 0 3px; }
   .howto-head:first-child { margin-top: 0; }
-  .howto-tip { color: #666; font-style: italic; margin-top: 8px; }
+  .howto-tip { color: var(--muted); font-style: italic; margin-top: 8px; }
 
   /* ── Banner stack ── */
   #banner-stack { position: fixed; top: 46px; left: 0; right: 0; z-index: 1000; display: flex; flex-direction: column; pointer-events: none; }
@@ -484,7 +515,7 @@
 </header>
 
 <div class="howto-bar">
-  <button class="howto-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ HOW TO USE':'? HOW TO USE'">? HOW TO USE</button>
+  <button class="howto-toggle" onclick="const p=this.nextElementSibling;p.classList.toggle('open');this.parentElement.classList.toggle('open');this.textContent=p.classList.contains('open')?'▲ HOW TO USE':'? HOW TO USE'">? HOW TO USE</button>
   <div class="howto-panel">
     <div class="howto-head">Record</div>
     1. Enter an optional session label<br>
@@ -591,7 +622,15 @@
     </div>
 
     <div class="session-list-wrap">
-      <div class="session-empty" id="session-empty">No recordings yet.<br>Press ● RECORD to capture tracker data.</div>
+      <div class="session-empty" id="session-empty">
+        <div style="font-size:12px;color:#fff;letter-spacing:2px;margin-bottom:8px">NO SESSIONS YET</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:16px;letter-spacing:.5px">Press ● RECORD to capture tracker data</div>
+        <div style="font-size:9px;color:var(--muted);letter-spacing:1px;border-top:1px solid var(--border);padding-top:12px;text-align:left">
+          <div style="display:flex;gap:10px;padding:3px 0"><span style="color:var(--cyan);min-width:10px">1</span>Enter an optional session label</div>
+          <div style="display:flex;gap:10px;padding:3px 0"><span style="color:var(--cyan);min-width:10px">2</span>Click ● RECORD to start capturing</div>
+          <div style="display:flex;gap:10px;padding:3px 0"><span style="color:var(--cyan);min-width:10px">3</span>Click ■ STOP — session saves automatically</div>
+        </div>
+      </div>
       <div id="session-list"></div>
     </div>
 
@@ -796,6 +835,7 @@ function renderSessions() {
     const dur = fmtDuration(s.duration_s ?? 0);
     const dt  = s.started_at ? new Date(s.started_at * 1000).toLocaleString() : '—';
 
+    const typeTag = fmtTrackerTypes(s);
     el.innerHTML = `
       <div class="si-top">
         <div class="si-label">${esc(s.label || s.file)}</div>
@@ -804,7 +844,7 @@ function renderSessions() {
       <div class="si-meta">
         <span>${dt}</span>
         <span><span class="hi">${s.frames ?? '—'}</span> frames</span>
-        <span><span class="hi">${s.trackers ?? '—'}</span> trackers</span>
+        <span><span class="hi">${s.trackers ?? '—'}</span> trackers${typeTag}</span>
         <span>${esc(s.file)}</span>
       </div>`;
     list.appendChild(el);
@@ -1006,6 +1046,15 @@ async function doExport() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtTrackerTypes(s) {
+  const lh  = s.lighthouse_count ?? 0;
+  const vut = s.vut_count        ?? 0;
+  if (!lh && !vut) return '';
+  if (lh && vut)   return ` (${lh}× LH · ${vut}× VUT)`;
+  if (lh)          return ' (LH)';
+  return ' (VUT)';
+}
+
 function fmtDuration(s) {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);

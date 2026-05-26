@@ -196,6 +196,8 @@
   }
   .badge-tracking { background: rgba(0,230,118,.12); border: 1px solid var(--green); color: var(--green); }
   .badge-lost     { background: rgba(255,82,82,.12);  border: 1px solid var(--red);   color: var(--red); }
+  .badge-vut      { background: rgba(0,229,255,.12);  border: 1px solid var(--cyan);  color: var(--cyan); }
+  .badge-lh       { background: rgba(255,179,0,.12);  border: 1px solid var(--amber); color: var(--amber); }
 
   .tc-serial {
     font-family: var(--font-mono);
@@ -313,11 +315,14 @@
     bottom: 14px; right: 14px;
     font-family: var(--font-mono);
     font-size: 9px;
-    color: var(--muted);
+    color: #aaaaaa;
     line-height: 1.9;
     text-align: right;
     pointer-events: none;
     user-select: none;
+    background: rgba(10,10,10,0.85);
+    border-radius: 4px;
+    padding: 8px 10px;
   }
   .kbd-hints kbd {
     display: inline-block;
@@ -334,7 +339,7 @@
     margin-top: 6px;
     border-top: 1px solid var(--border);
     padding-top: 6px;
-    color: #1e3a4a;
+    color: #aaaaaa;
     text-decoration: none;
     letter-spacing: 1px;
     pointer-events: all;
@@ -410,6 +415,7 @@
     <div class="conn-dot waiting" id="conn-dot"></div>
     <span id="conn-text" style="color:var(--muted)">WAITING</span>
     <span class="conn-url">ws://localhost:8765</span>
+    <span id="conn-type-summary" style="color:var(--muted);font-size:9px;margin-left:4px"></span>
   </div>
 </header>
 
@@ -480,21 +486,26 @@ const BODY_TRAIL_MAX = 100;
 // ═══════════════════════════════════════════════════════════════════════════════
 // SHARED — tracker registry, math helpers
 // ═══════════════════════════════════════════════════════════════════════════════
-const SLOT_COLORS = ['#00e5ff', '#ffb300', '#00e676', '#ff5252'];
-const TRAIL_MAX   = 200;
-const TRACKER_R   = 12;
-const TICK_LEN    = 20;
+const VUT_COLORS = ['#00e5ff', '#00e676', '#4a9eff', '#ffffff'];
+const LH_COLORS  = ['#ffb300', '#ff8c00', '#ffd700', '#e65100'];
+const TRAIL_MAX  = 200;
+const TRACKER_R  = 12;
+const TICK_LEN   = 20;
 
 const trackers  = new Map();
 let   slotIndex = 0;
+let   vutSlot   = 0;
+let   lhSlot    = 0;
 
-function getOrCreate(serial) {
+function getOrCreate(serial, trackerType) {
   if (trackers.has(serial)) return trackers.get(serial);
+  const isLH  = trackerType === 'lighthouse';
+  const color = isLH ? LH_COLORS[lhSlot++ % LH_COLORS.length]
+                     : VUT_COLORS[vutSlot++ % VUT_COLORS.length];
   const slot  = slotIndex++;
-  const color = SLOT_COLORS[slot] || '#ffffff';
   const name  = 'VUT-' + String(slot + 1).padStart(2, '0');
   const state = {
-    serial, slot, color, name,
+    serial, slot, color, name, trackerType: trackerType || 'unknown',
     pos: { x: 0, y: 0, z: 0 },
     rot: { w: 1, x: 0, y: 0, z: 0 },
     status: 'waiting',
@@ -557,7 +568,9 @@ function buildCard(trk) {
   el.className = 'tracker-card';
   el.id = 'card-' + trk.serial;
 
-  const dot = `<div class="tc-dot" style="background:${trk.color};box-shadow:0 0 5px ${trk.color}"></div>`;
+  const dot            = `<div class="tc-dot" style="background:${trk.color};box-shadow:0 0 5px ${trk.color}"></div>`;
+  const typeBadgeClass = trk.trackerType === 'lighthouse' ? 'badge-lh' : 'badge-vut';
+  const typeLabel      = trk.trackerType === 'lighthouse' ? 'LH' : 'VUT';
 
   const posRow = ['X','Y','Z'].map(ax => `
     <div class="tc-cell">
@@ -579,6 +592,7 @@ function buildCard(trk) {
     <div class="tc-header">
       ${dot}
       <div class="tc-name">${trk.name}</div>
+      <div class="tc-badge ${typeBadgeClass}">${typeLabel}</div>
       <div class="tc-badge badge-lost" id="badge-${trk.serial}">LOST</div>
     </div>
     <div class="tc-serial">Serial: ${trk.serial}</div>
@@ -1299,8 +1313,9 @@ function connect() {
       for (const [serial, entry] of Object.entries(d)) {
         if (serial === 'meta') continue;
         if (!entry || typeof entry !== 'object' || !entry.position) continue;
-        const trk  = getOrCreate(serial);
+        const trk  = getOrCreate(serial, entry.tracker_type);
         trk.status = 'tracking';
+        if (entry.tracker_type) trk.trackerType = entry.tracker_type;
         trk.pos    = { x: entry.position.x, y: entry.position.y, z: entry.position.z };
         trk.rot    = { w: entry.rotation.w, x: entry.rotation.x, y: entry.rotation.y, z: entry.rotation.z };
         trk.batteryPct = (entry.battery_pct !== undefined) ? entry.battery_pct : null;
@@ -1319,8 +1334,23 @@ function connect() {
         updateCard(trk);
       }
       const set = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
-      set('gs-fps',    (meta?.fps ?? '—') + ' fps');
-      set('gs-active', activeCount + ' tracker' + (activeCount !== 1 ? 's' : ''));
+      set('gs-fps', (meta?.fps ?? '—') + ' fps');
+
+      const lhCount  = meta?.lighthouse_count ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'lighthouse').length;
+      const vutCount = meta?.vut_count        ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'vut').length;
+      let typeStr = '';
+      if (lhCount && vutCount) typeStr = ` (${lhCount} LH · ${vutCount} VUT)`;
+      else if (lhCount)        typeStr = ' (LH)';
+      else if (vutCount)       typeStr = ' (VUT)';
+      set('gs-active', activeCount + ' tracker' + (activeCount !== 1 ? 's' : '') + typeStr);
+
+      let typeSummary = '';
+      if (lhCount && vutCount) typeSummary = `${lhCount}× LH  ${vutCount}× VUT`;
+      else if (lhCount)        typeSummary = `${lhCount}× LH`;
+      else if (vutCount)       typeSummary = `${vutCount}× VUT`;
+      const summaryEl = document.getElementById('conn-type-summary');
+      if (summaryEl) summaryEl.textContent = typeSummary;
+
       if (firstPose && activeCount > 0) { fitView(); firstPose = false; }
     }
 
@@ -1330,7 +1360,7 @@ function connect() {
       let   activeCount = 0;
 
       for (const td of d.trackers) {
-        const trk = getOrCreate(td.id);
+        const trk = getOrCreate(td.id, td.tracker_type);
         trk.status = td.valid ? 'tracking' : (td.status || 'lost');
 
         if (td.valid) {
