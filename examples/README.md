@@ -3,6 +3,16 @@
 Quick-start examples for connecting to the VUT
 Headless SDK WebSocket stream.
 
+## Serial number formats
+
+| Format | Type |
+|--------|------|
+| 41-XXXXXXXX or 42-XXXXXXXX | VIVE Ultimate Tracker |
+| LHR-XXXXXXXX | Vive Tracker 3.0 |
+
+All examples work with both tracker types.
+Replace serial numbers with your own.
+
 ## Prerequisites
 START_VUT_ROBOTICS_SDK.bat must be running.
 WebSocket stream: ws://localhost:8765

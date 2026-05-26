@@ -90,11 +90,21 @@ This represents the noise floor of the SDK in headless
 mode — i.e. the minimum measurable position uncertainty 
 for a stationary object.
 
-Note: this is a single-tracker measurement under 
-controlled indoor conditions. Results may vary with 
+Note: this is a single-tracker measurement under
+controlled indoor conditions. Results may vary with
 environment, lighting, and tracker orientation.
 
+## Vive Tracker 3.0 Accuracy
 
+| Metric | Tracker 3.0 (LH) | VUT (SLAM) |
+|--------|-----------------|------------|
+| Position accuracy | <1mm | 1–3mm |
+| Dark environments | ✓ | ✗ |
+| Featureless rooms | ✓ | ✗ |
+| Session persistence | ✓ Stable | Standard: drift |
+
+Source: Valve published specifications.
+Headless SDK validation: not yet available.
 
 ## Citation
 

@@ -30,23 +30,26 @@ from VIVE Ultimate Trackers to any application via WebSocket.
 
 ## Prerequisites
 
-**Hardware**
-- VIVE Ultimate Trackers (tested with 5x simultaneously max supported by HTC)
-- 1 x Tracker dongle.
-- 1 x SteamVR capable Windows machine
+### Hardware — choose one:
 
+**Option A — VIVE Ultimate Tracker (VUT)**
+- VIVE Ultimate Trackers (tested with 5x simultaneously)
+- 1x Tracker Dongle (USB)
+- VIVE Hub installed and trackers showing green
 
-**Software
+**Option B — Vive Tracker 3.0 + Base Stations**
+- Vive Tracker 3.0 (tested with 3x simultaneously)
+- 1x or 2x SteamVR Base Station 1.0 or 2.0
+- No VIVE Hub required
+- Works in any lighting including darkness
+- Ensure base stations are active and trackers
+  show solid green in SteamVR before starting SDK
+- For setup: refer to HTC and Valve documentation
+
+### Software (both options)
 - Windows 11
 - SteamVR installed and running
-- Vive Hub with trackers paired and running
 - Python 3.10+
-### Tracking modes
-Standard out of the box mode. 
-VO mode (Need VB+ licences)
-
-Standard LBE and WiFi LBE mode not tested  
-Potentially able to increase tracking volume by creating a LBE map with a  Vive Headset (Focus Vision) and impoprting the map to VUT via Vive Busienss+ Console - Need VUT licences - NOT TESTED. 
 
 ---
 
@@ -247,6 +250,8 @@ identifiers. Always key on the serial number (top-level dict key).
 - Standard tracking mode confirmed (no licence required)
 - VO mode confirmed with Business+ licence
 - vut-skeleton body tracking: 5 trackers → 17 joints
+- Vive Tracker 3.0 + Base Station 1.0 ✓
+- Vive Tracker 3.0 + Base Station 2.0 ✓
 
 ---
 
@@ -258,6 +263,7 @@ identifiers. Always key on the serial number (top-level dict key).
 - Tracker IDs may reorder on reconnect — use serial numbers for
   consistent assignment
 - SteamVR must be running before starting the SDK stack
+- Mixed mode (VUT + Lighthouse simultaneously) not yet validated
 
 Position noise floor: 0.30mm 3D RMS (stationary, 64Hz)
 See [docs/ACCURACY.md](docs/ACCURACY.md) for full characterisation.

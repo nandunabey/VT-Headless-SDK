@@ -8,6 +8,23 @@
 - Standard tracking mode — no licence required
 - VO mode — requires Business+ licence
 
+## Hardware — confirmed working
+
+### VIVE Ultimate Tracker (VUT)
+- 5x simultaneously ✓
+- Standard mode (no licence) ✓
+- VO mode (Business+ licence) ✓
+- Serial: 41-XXXXXXXX / 42-XXXXXXXX
+
+### Vive Tracker 3.0
+- 3x simultaneously ✓ (Base Station 1.0)
+- Base Station 2.0 ✓
+- Serial: LHR-XXXXXXXX
+- Confirmed: May 2026
+
+### Mixed mode (VUT + Lighthouse)
+Not yet tested — planned investigation.
+
 ## Linux — under investigation
 
 ### OpenVR path
