@@ -496,14 +496,29 @@ const trackers  = new Map();
 let   slotIndex = 0;
 let   vutSlot   = 0;
 let   lhSlot    = 0;
+let   trkSlot   = 0;
 
 function getOrCreate(serial, trackerType) {
   if (trackers.has(serial)) return trackers.get(serial);
-  const isLH  = trackerType === 'lighthouse';
-  const color = isLH ? LH_COLORS[lhSlot++ % LH_COLORS.length]
-                     : VUT_COLORS[vutSlot++ % VUT_COLORS.length];
-  const slot  = slotIndex++;
-  const name  = 'VUT-' + String(slot + 1).padStart(2, '0');
+  let color, prefix, nameNum;
+  if (trackerType === 'lighthouse') {
+    color   = LH_COLORS[lhSlot % LH_COLORS.length];
+    prefix  = 'LH';
+    nameNum = lhSlot + 1;
+    lhSlot++;
+  } else if (trackerType === 'vut') {
+    color   = VUT_COLORS[vutSlot % VUT_COLORS.length];
+    prefix  = 'VUT';
+    nameNum = vutSlot + 1;
+    vutSlot++;
+  } else {
+    color   = VUT_COLORS[trkSlot % VUT_COLORS.length];
+    prefix  = 'TRK';
+    nameNum = trkSlot + 1;
+    trkSlot++;
+  }
+  const slot = slotIndex++;
+  const name = prefix + '-' + String(nameNum).padStart(2, '0');
   const state = {
     serial, slot, color, name, trackerType: trackerType || 'unknown',
     pos: { x: 0, y: 0, z: 0 },
@@ -1339,9 +1354,9 @@ function connect() {
       const lhCount  = meta?.lighthouse_count ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'lighthouse').length;
       const vutCount = meta?.vut_count        ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'vut').length;
       let typeStr = '';
-      if (lhCount && vutCount) typeStr = ` (${lhCount} LH · ${vutCount} VUT)`;
-      else if (lhCount)        typeStr = ' (LH)';
-      else if (vutCount)       typeStr = ' (VUT)';
+      if (lhCount && vutCount) typeStr = ` (${lhCount}× LH · ${vutCount}× VUT)`;
+      else if (lhCount)        typeStr = ` (${lhCount}× LH)`;
+      else if (vutCount)       typeStr = ` (${vutCount}× VUT)`;
       set('gs-active', activeCount + ' tracker' + (activeCount !== 1 ? 's' : '') + typeStr);
 
       let typeSummary = '';
