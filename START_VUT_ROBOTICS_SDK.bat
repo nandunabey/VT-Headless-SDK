@@ -8,8 +8,9 @@ color 0B
 
 echo.
 echo  ================================================
-echo   VIVE Ultimate Tracker -- Headless Robotics SDK
-echo   PoC v0.1 -- community project
+echo   VUT Headless SDK
+echo   Supports: VIVE Ultimate Tracker + Vive Tracker 3.0
+echo   v0.2.0-alpha -- community project
 echo  ================================================
 echo.
 
@@ -65,7 +66,7 @@ echo  [OK] recordings\ directory ready
 :: ── Start daemon (WebSocket :8765 + HTTP :8080) ──────────────────────────────
 
 echo  Starting tracker daemon (ws://localhost:8765 + http://localhost:8080)...
-start "VUT Tracker Daemon" cmd /c "cd /d C:\Users\vive_\dev\vut-sdk && python vtrackerd_openvr.py --fps 60"
+start "VUT Tracker Daemon" cmd /c "cd /d %~dp0 && python vtrackerd_openvr.py --fps 60"
 
 echo  Waiting for daemon to initialise...
 timeout /t 3 /nobreak >nul
@@ -74,7 +75,7 @@ echo  [OK] Daemon started -- ws://localhost:8765 + http://localhost:8080
 :: ── Open browser ────────────────────────────────────────────────────────────
 
 echo  Opening visualiser in Chrome...
-start chrome "http://localhost:8080/visualiser.html"
+start "" "http://localhost:8080/visualiser.html"
 echo  [OK] Browser opening visualiser...
 
 REM Open setup on first run only
@@ -89,7 +90,7 @@ IF NOT EXIST "%~dp0tracker_roles.json" (
 :: ── Start Skeleton server ─────────────────────────────────────────────────────
 
 echo  Starting Skeleton server on port 8081...
-start "VUT Skeleton Server" /MIN cmd /c "cd /d C:\Users\vive_\dev\vut-skeleton && python visualiser/server.py"
+start "VUT Skeleton Server" /MIN cmd /c "cd /d %~dp0..\vut-skeleton && python visualiser/server.py"
 echo  Waiting for skeleton server to initialise...
 timeout /t 3 /nobreak >nul
 echo  [OK] Skeleton server started on port 8081
@@ -102,8 +103,9 @@ echo  [OK] Skeleton visualiser opening...
 
 echo.
 echo  ================================================
-echo   VIVE Ultimate Tracker -- Headless Robotics SDK
-echo   PoC v0.1 -- community project
+echo   VUT Headless SDK
+echo   Supports: VIVE Ultimate Tracker + Vive Tracker 3.0
+echo   v0.2.0-alpha -- community project
 echo  ================================================
 echo.
 echo  [OK] Tracker daemon  --  ws://localhost:8765 + http://localhost:8080
@@ -113,14 +115,14 @@ echo  [OK] Skeleton server  --  http://localhost:8081
 echo  [OK] Skeleton WS     --  ws://localhost:8766
 echo  [OK] Skeleton vis    --  http://localhost:8081/vut-skeleton/visualiser/index.html
 echo.
-echo  Tracker serials:
-echo    VUT-01: 47-A33F01412  ^(cyan^)
-echo    VUT-02: FA4383B00537  ^(amber^)
+echo  Tracker serials: see visualiser for active trackers
 echo.
 if %VIVE_HUB_RUNNING%==1 (
     echo  Mode: VUT ^(VIVE Ultimate Tracker^)
+    echo        VIVE Hub detected -- room scan required
 ) else (
-    echo  Mode: Base Station ^(Lighthouse^)
+    echo  Mode: Base Station ^(Lighthouse / Tracker 3.0^)
+    echo        Ensure trackers show solid green in SteamVR
 )
 echo.
 echo  Daemon window:   "VUT Tracker Daemon"
