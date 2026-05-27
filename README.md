@@ -69,7 +69,7 @@ pip install -e vut-sdk/
 
 **Step 1 — Start the SDK stack:**
 ```
-START_VUT_ROBOTICS_SDK.bat
+START_VT_SDK.bat
 ```
 
 **Step 2 — Check tracker status:**
@@ -179,7 +179,7 @@ for serial, pose in fleet.get_poses().items():
 ## Toolkit
 
 Browser-based tools served at `http://localhost:8080`
-after running `START_VUT_ROBOTICS_SDK.bat`:
+after running `START_VT_SDK.bat`:
 
 | Tool | URL | Description |
 |------|-----|-------------|

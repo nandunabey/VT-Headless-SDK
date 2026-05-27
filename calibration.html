@@ -358,7 +358,7 @@ async function persistAnchors() {
       showBanner(
         `Save failed (HTTP ${r.status})` +
         (body ? `\nResponse: ${body}` : '') +
-        '\nCheck that START_VUT_ROBOTICS_SDK.bat is running',
+        '\nCheck that START_VT_SDK.bat is running',
         'error'
       );
       renderAll();
@@ -367,7 +367,7 @@ async function persistAnchors() {
     const j = await r.json();
     if (j.status !== 'ok') {
       showBanner(
-        `Save failed: ${j.message || 'unknown error'}\nCheck that START_VUT_ROBOTICS_SDK.bat is running`,
+        `Save failed: ${j.message || 'unknown error'}\nCheck that START_VT_SDK.bat is running`,
         'error'
       );
       renderAll();
@@ -376,7 +376,7 @@ async function persistAnchors() {
     showBanner('Saved anchors.json', 'success');
   } catch (e) {
     showBanner(
-      `Save error: ${e.message}\nCheck that START_VUT_ROBOTICS_SDK.bat is running`,
+      `Save error: ${e.message}\nCheck that START_VT_SDK.bat is running`,
       'error'
     );
   }

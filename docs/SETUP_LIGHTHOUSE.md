@@ -3,7 +3,7 @@
 ## Before starting the SDK
 
 Ensure the following before running
-START_VUT_ROBOTICS_SDK.bat:
+START_VT_SDK.bat:
 
 1. Base stations powered on — solid green light
 2. Trackers paired in SteamVR and showing green

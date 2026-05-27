@@ -13,7 +13,7 @@ All examples work with both tracker types.
 Replace serial numbers with your own.
 
 ## Prerequisites
-START_VUT_ROBOTICS_SDK.bat must be running.
+START_VT_SDK.bat must be running.
 WebSocket stream: ws://localhost:8765
 
 ## Examples

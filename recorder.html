@@ -762,7 +762,7 @@ async function startRecording() {
     recTimerInt = setInterval(updateTimer, 500);
     showMsg('Recording started — ' + label, 'ok');
   } catch (err) {
-    const hint = err.message === 'Failed to fetch' ? '\nCheck that START_VUT_ROBOTICS_SDK.bat is running' : '';
+    const hint = err.message === 'Failed to fetch' ? '\nCheck that START_VT_SDK.bat is running' : '';
     showBanner('Error starting recording: ' + err.message + hint, 'error');
   }
 }
@@ -786,7 +786,7 @@ async function stopRecording() {
     showMsg('Saved: ' + j.file + '  (' + j.frames + ' frames)', 'ok');
     await refreshSessions();
   } catch (err) {
-    const hint = err.message === 'Failed to fetch' ? '\nCheck that START_VUT_ROBOTICS_SDK.bat is running' : '';
+    const hint = err.message === 'Failed to fetch' ? '\nCheck that START_VT_SDK.bat is running' : '';
     showBanner('Error stopping recording: ' + err.message + hint, 'error');
   }
 }
@@ -920,7 +920,7 @@ async function playSession() {
     showMsg('Playing: ' + selectedFile, 'ok');
     scheduleNextFrame();
   } catch (err) {
-    const hint = err.message === 'Failed to fetch' ? '\nCheck that START_VUT_ROBOTICS_SDK.bat is running' : '';
+    const hint = err.message === 'Failed to fetch' ? '\nCheck that START_VT_SDK.bat is running' : '';
     showBanner('Playback error: ' + err.message + hint, 'error');
   }
 }
@@ -1038,7 +1038,7 @@ async function doExport() {
     URL.revokeObjectURL(a.href);
     showMsg('Export ready: ' + basename + ext, 'ok');
   } catch (err) {
-    const hint = err.message === 'Failed to fetch' ? '\nCheck that START_VUT_ROBOTICS_SDK.bat is running' : '';
+    const hint = err.message === 'Failed to fetch' ? '\nCheck that START_VT_SDK.bat is running' : '';
     showBanner('Export error: ' + err.message + hint, 'error');
   } finally {
     document.getElementById('btn-export').disabled = false;

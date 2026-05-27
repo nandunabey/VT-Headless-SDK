@@ -2,7 +2,7 @@
 
 ## Before starting the SDK
 Ensure the following before running
-START_VUT_ROBOTICS_SDK.bat:
+START_VT_SDK.bat:
 
 1. VIVE Hub installed and running
 2. Trackers paired and showing green in VIVE Hub
