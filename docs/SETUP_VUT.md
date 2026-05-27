@@ -15,8 +15,8 @@ e.g. 41-A33204726
 ## Tracking modes
 | Mode | Licence | Notes |
 |------|---------|-------|
-| Standard | Free | Room scan required each session |
-| VO mode | Business+ | Map persists, no re-scan |
+| Standard | Free |  |
+| VO mode | Business+ | |
 
 ## Setup reference
 For VIVE Hub installation, tracker pairing,
