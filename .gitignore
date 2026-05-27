@@ -17,3 +17,15 @@ tracker_roles.json
 
 # Session recordings
 recordings/
+
+# Installers
+*.exe
+dist/*.exe
+
+# Internal research and WIP files
+docs/PIPE_RESEARCH.md
+docs/VUT_ScanApp_BuildBrief.md
+scan_app/
+tools/
+tmp_*.py
+*tmp*.py
