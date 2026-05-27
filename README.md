@@ -24,7 +24,7 @@ from VIVE Ultimate Trackers to any application via WebSocket.
 - Up to 5+ trackers simultaneously
 - WebSocket API at `ws://localhost:8765`
 - Includes robotics and body tracking visualisers
-- Foundation for [vut-skeleton](placeholder) body tracking
+- Foundation for (https://github.com/nandunabey/vt-skeleton/tree/main) body tracking
 
 ---
 
