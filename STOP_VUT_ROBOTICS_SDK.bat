@@ -3,11 +3,11 @@ REM Robotics WS:  ws://localhost:8765
 REM Robotics HTTP: http://localhost:8080
 REM Skeleton WS:  ws://localhost:8766
 REM Skeleton HTTP: http://localhost:8081
-title VUT Robotics SDK -- Stop
+title VT Headless SDK -- Stop
 color 0C
 
 echo.
-echo  Stopping VUT Robotics SDK services...
+echo  Stopping VT Headless SDK services...
 echo.
 
 taskkill /F /IM python.exe /T 2>nul

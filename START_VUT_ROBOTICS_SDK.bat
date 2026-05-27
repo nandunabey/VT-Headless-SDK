@@ -3,12 +3,12 @@ REM Robotics WS:  ws://localhost:8765
 REM Robotics HTTP: http://localhost:8080
 REM Skeleton WS:  ws://localhost:8766
 REM Skeleton HTTP: http://localhost:8081
-title VUT Robotics SDK Launcher
+title VT Headless SDK Launcher
 color 0B
 
 echo.
 echo  ================================================
-echo   VUT Headless SDK
+echo   VT Headless SDK
 echo   Supports: VIVE Ultimate Tracker + Vive Tracker 3.0
 echo   v0.2.0-alpha -- community project
 echo  ================================================
@@ -103,7 +103,7 @@ echo  [OK] Skeleton visualiser opening...
 
 echo.
 echo  ================================================
-echo   VUT Headless SDK
+echo   VT Headless SDK
 echo   Supports: VIVE Ultimate Tracker + Vive Tracker 3.0
 echo   v0.2.0-alpha -- community project
 echo  ================================================

@@ -1,7 +1,6 @@
 ﻿# Examples
 
-Quick-start examples for connecting to the VUT
-Headless SDK WebSocket stream.
+Quick-start examples for connecting to the VT Headless SDK WebSocket stream.
 
 ## Serial number formats
 

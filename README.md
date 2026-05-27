@@ -1,4 +1,4 @@
-# VUT SDK
+# VT Headless SDK
 
 > ⚠️ **Alpha Release — v0.2.0-alpha**
 > This SDK is in early development. APIs may change
@@ -17,7 +17,7 @@ over WebSocket for robotics, motion capture, and body tracking.
 
 ## What this is
 
-VUT Headless SDK bridges SteamVR and Python, streaming live 6DoF poses
+VT Headless SDK bridges SteamVR and Python, streaming live 6DoF poses
 from VIVE Ultimate Trackers to any application via WebSocket.
 
 - Real-time position + orientation per tracker
@@ -58,8 +58,8 @@ from VIVE Ultimate Trackers to any application via WebSocket.
 Clone and install from source:
 
 ```bash
-git clone https://github.com/nandunabey/VUT-Headless-SDK.git
-cd VUT-Headless-SDK
+git clone https://github.com/nandunabey/VT-Headless-SDK.git
+cd VT-Headless-SDK
 pip install -e vut-sdk/
 ```
 
@@ -154,12 +154,12 @@ for serial, pose in fleet.get_poses().items():
 ## Demo
 
 ### Robotics visualiser — live 5-tracker tracking
-[![Unofficial VUT Headless SDK - Robotics view](https://img.youtube.com/vi/VURLUIOaj9Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=VURLUIOaj9Y)
-*Unofficial VUT Headless SDK — Robotics view*
+[![Unofficial VT Headless SDK - Robotics view](https://img.youtube.com/vi/VURLUIOaj9Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=VURLUIOaj9Y)
+*Unofficial VT Headless SDK — Robotics view*
 
 ### Body tracking visualiser
-[![Unofficial VUT Headless SDK - Body tracking](https://img.youtube.com/vi/1m04uqlcWGM/maxresdefault.jpg)](https://www.youtube.com/watch?v=1m04uqlcWGM)
-*Unofficial VUT Headless SDK — Body tracking*
+[![Unofficial VT Headless SDK - Body tracking](https://img.youtube.com/vi/1m04uqlcWGM/maxresdefault.jpg)](https://www.youtube.com/watch?v=1m04uqlcWGM)
+*Unofficial VT Headless SDK — Body tracking*
 
 ---
 
@@ -190,7 +190,7 @@ after running `START_VUT_ROBOTICS_SDK.bat`:
 | Calibration | /calibration.html | Origin + named anchors |
 
 Download the installer:
-[VUT-Headless-SDK-Setup-v0.2.0-alpha.exe](installer/)
+[VT-Headless-SDK-Setup-v0.2.0-alpha.exe](installer/)
 Includes Python prerequisites check and auto-setup.
 
 ---
@@ -281,7 +281,7 @@ https://github.com/nandunabey/vut-skeleton
 
 ## AI Agent Integration (MCP)
 
-VUT Headless SDK includes a Model Context Protocol (MCP)
+VT Headless SDK includes a Model Context Protocol (MCP)
 server — connect Claude Code or any MCP-compatible AI
 agent to your trackers in minutes.
 

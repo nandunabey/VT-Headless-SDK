@@ -30,7 +30,7 @@ considered "almost perfect" agreement (McBride, 2005).
 ### Important caveat — headless mode - !!! More validation Needed!!! 
 
 The above study used SteamVR with an active VIVE XR Elite 
-HMD present in the session. The VUT Headless SDK runs 
+HMD present in the session. The VT Headless SDK runs 
 SteamVR without a headset (VRApplication_Background mode).
 
 Whether tracking accuracy differs in headless mode vs 
@@ -67,7 +67,7 @@ For research deployments, characterise your specific
 environment using the benchmark tool (v0.3) before
 collecting study data.
 
-## Noise Floor (measured via VUT Headless SDK)   -  !! MORE Valifation needed!! 
+## Noise Floor (measured via VT Headless SDK)   -  !! MORE Valifation needed!! 
 
 Methodology: single tracker placed on rigid stationary 
 surface, recorded for 65 seconds at 64.1Hz, 
@@ -108,7 +108,7 @@ Headless SDK validation: not yet available.
 
 ## Citation
 
-If you use VUT Headless SDK in research, please cite 
+If you use VT Headless SDK in research, please cite 
 the hardware validation study:
 
   He, Y. et al. (2026). Validation of the HTC VIVE 
@@ -117,5 +117,5 @@ the hardware validation study:
   Research Square. https://doi.org/10.21203/rs.3.rs-6989733/v1
 
 And reference this SDK:
-  Abeynayake, N. (2026). VUT Headless SDK.
-  GitHub. https://github.com/nandunabey/VUT-Headless-SDK
+  Abeynayake, N. (2026). VT Headless SDK.
+  GitHub. https://github.com/nandunabey/VT-Headless-SDK
