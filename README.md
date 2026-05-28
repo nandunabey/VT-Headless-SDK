@@ -1,4 +1,4 @@
-# VT Headless SDK
+# **VT Headless SDK ** (Unofficial)
 
 > ⚠️ **Alpha Release — v0.2.1-alpha**
 > This SDK is in early development. APIs may change
@@ -11,13 +11,13 @@
 Headless 6DoF pose streaming for VUT's and Tracker 3.0's.
 
 No HMD. No VR headset. Tracker poses streamed directly
-over WebSocket for robotics, motion capture, and body tracking.
+over WebSocket for robotics, motion capture, body trackin and agentic workflows via a MCP server 
 
 ---
 
 ## What this is
 
-VT Headless SDK bridges SteamVR and Python, streaming live 6DoF poses
+*** Unofficial VT Headless SDK bridges SteamVR and Python, streaming live 6DoF poses
 from VIVE Ultimate Trackers to any application via WebSocket.
 
 - Real-time position + orientation per tracker
@@ -63,7 +63,7 @@ Clone and install from source:
 ```bash
 git clone https://github.com/nandunabey/VT-Headless-SDK.git
 cd VT-Headless-SDK
-pip install -e vut-sdk/
+pip install -e vt-sdk/
 ```
 
 ---
