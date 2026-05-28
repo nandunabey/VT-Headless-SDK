@@ -1,6 +1,8 @@
-# Accuracy & Validation
+# Accuracy & Validation 
 
 ## Independent Research Validation
+
+*****VUT*****
 
 VIVE Ultimate Tracker hardware has been validated against 
 the Vicon gold-standard motion capture system by researchers 
@@ -57,8 +59,6 @@ accuracy depends on:
 - **Lighting** — consistent diffuse lighting is optimal.
   Direct sunlight, strobing, or very low light reduces
   accuracy.
-- **Room size** — larger spaces with more visual anchors
-  generally track better.
 - **Map quality** — VIVE Hub's room scan builds the
   tracking map. Follow HTC's environment setup guidelines
   for best results before any research data collection.
@@ -94,6 +94,7 @@ Note: this is a single-tracker measurement under
 controlled indoor conditions. Results may vary with
 environment, lighting, and tracker orientation.
 
+****** Vive Tracker 3.0 ******
 ## Vive Tracker 3.0 Accuracy
 
 | Metric | Tracker 3.0 (LH) | VUT (SLAM) |
