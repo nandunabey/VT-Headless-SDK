@@ -1,14 +1,14 @@
 # VT Headless SDK
 
-> ⚠️ **Alpha Release — v0.2.0-alpha**
+> ⚠️ **Alpha Release — v0.2.1-alpha**
 > This SDK is in early development. APIs may change
 > between releases. Not recommended for production use.
 > Tested on 5x VIVE Ultimate Trackers (VUT) + 1 x Tracker dongle. 
 
 > ⚠️ **Unofficial SDK — Community Project**
-> UNOFFICIAL SDK.  This is an unofficial community alpha that uses publicly available runtime interfaces to read pose data from VIVE Ultimate Trackers in a headless SteamVR setup. It is not endorsed, supported, or maintained by HTC Corporation or Valve Corporation.
+> UNOFFICIAL SDK.  This is an unofficial community alpha that uses publicly available runtime interfaces to read pose data from VIVE Ultimate Trackers AND Tracker3.0 in a headless SteamVR setup. It is not endorsed, supported, or maintained by HTC Corporation or Valve Corporation.
 
-Headless 6DoF pose streaming for VIVE Ultimate Trackers.
+Headless 6DoF pose streaming for VUT's and Tracker 3.0's.
 
 No HMD. No VR headset. Tracker poses streamed directly
 over WebSocket for robotics, motion capture, and body tracking.
@@ -32,24 +32,27 @@ from VIVE Ultimate Trackers to any application via WebSocket.
 
 ### Hardware — choose one:
 
-**Option A — VIVE Ultimate Tracker (VUT)**
+**Option A) Inside-Out (SLAM) Tracking  — VIVE Ultimate Tracker (VUT)**  
 - VIVE Ultimate Trackers (tested with 5x simultaneously)
 - 1x Tracker Dongle (USB)
-- VIVE Hub installed and trackers showing green
+- VIVE Hub installed and trackers showing green (i.e. In tracking state)
+- For setup: refer to HTC and Valve documentation
 
-**Option B — Vive Tracker 3.0 + Base Stations**
+
+**Option B) Outside-In (lighthouse) tracking — Vive Tracker 3.0 + Base Stations**
 - Vive Tracker 3.0 (tested with 3x simultaneously)
-- 1x or 2x SteamVR Base Station 1.0 or 2.0
+- 2x SteamVR Base Station 1.0 or 2.0
 - No VIVE Hub required
 - Works in any lighting including darkness
 - Ensure base stations are active and trackers
-  show solid green in SteamVR before starting SDK
+  show solid green.
 - For setup: refer to HTC and Valve documentation
 
 ### Software (both options)
 - Windows 11
 - SteamVR installed and running
 - Python 3.10+
+- Vive Hub (VUT's only)
 
 ---
 
@@ -151,23 +154,13 @@ for serial, pose in fleet.get_poses().items():
 
 ---
 
-## Demo
-
-### Robotics visualiser — live 5-tracker tracking
-[![Unofficial VT Headless SDK - Robotics view](https://img.youtube.com/vi/VURLUIOaj9Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=VURLUIOaj9Y)
-*Unofficial VT Headless SDK — Robotics view*
-
-### Body tracking visualiser
-[![Unofficial VT Headless SDK - Body tracking](https://img.youtube.com/vi/1m04uqlcWGM/maxresdefault.jpg)](https://www.youtube.com/watch?v=1m04uqlcWGM)
-*Unofficial VT Headless SDK — Body tracking*
-
 ---
 
 ## Architecture
 
 ```
-5x VIVE Ultimate Trackers
-1x Tracker dongle
+5x VIVE Ultimate Trackers 
+Or Tracker 3.0
   → SteamVR
   → vtrackerd_openvr.py
   → WebSocket ws://localhost:8765
@@ -189,11 +182,7 @@ after running `START_VT_SDK.bat`:
 | Measurement | /measurement.html | Live distance + angle |
 | Calibration | /calibration.html | Origin + named anchors |
 
-Download the installer:
-[VT-Headless-SDK-Setup-v0.2.0-alpha.exe](installer/)
-Includes Python prerequisites check and auto-setup.
 
----
 
 ## WebSocket API
 
@@ -275,7 +264,7 @@ See [docs/ACCURACY.md](docs/ACCURACY.md) for full characterisation.
 ### vut-skeleton
 17-joint body tracking skeleton solver built on vut-sdk.
 5 VIVE Ultimate Trackers → full body pose with inferred joints.
-https://github.com/nandunabey/vut-skeleton
+https://github.com/nandunabey/vt-skeleton
 
 ---
 
@@ -285,7 +274,7 @@ VT Headless SDK includes a Model Context Protocol (MCP)
 server — connect Claude Code or any MCP-compatible AI
 agent to your trackers in minutes.
 
-Requires: [vut-toolkit](https://github.com/nandunabey/vut-toolkit-unofficial)
+Requires: https://github.com/nandunabey/VT-Headless-SDK/
 
 ```bash
 cd vut-toolkit/mcp/vut-mcp
@@ -316,8 +305,6 @@ claude mcp add vut-mcp node "C:/path/to/vut-toolkit/mcp/vut-mcp/index.js"
 "Delete the test anchor"
 ```
 
-Believed to be the first MCP server providing real-time
-physical spatial perception via consumer hardware. May 2026.
 
 ---
 
