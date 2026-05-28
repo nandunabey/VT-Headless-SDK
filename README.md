@@ -63,7 +63,7 @@ Clone and install from source:
 ```bash
 git clone https://github.com/nandunabey/VT-Headless-SDK.git
 cd VT-Headless-SDK
-pip install -e vt-sdk/
+pip install -e .
 ```
 
 ---
