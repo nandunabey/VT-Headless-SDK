@@ -14,7 +14,7 @@ class DaemonNotRunning(VUTError):
     Fix:
         python C:\\Users\\vive_\\Desktop\\vtrackerd_openvr.py
     or:
-        from vut_sdk import VUTDaemon
+        from vt_sdk import VUTDaemon
         VUTDaemon().start()
 
     Docs: see CLAUDE.md — "How to Run"
@@ -26,7 +26,7 @@ class TrackerNotFound(VUTError):
 
     Fix:
         Check available tracker IDs with:
-            from vut_sdk import VUTTrackerFleet
+            from vt_sdk import VUTTrackerFleet
             fleet = VUTTrackerFleet()
             fleet.connect()
             print(fleet.tracker_ids)

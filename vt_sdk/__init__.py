@@ -3,14 +3,14 @@
 Built by nandunabey — community project.
 
 Quickstart:
-    from vut_sdk import VUTTracker
+    from vt_sdk import VUTTracker
 
     with VUTTracker() as tracker:
         pose = tracker.get_pose()
         print(pose)
 
 Fleet (all trackers):
-    from vut_sdk import VUTTrackerFleet
+    from vt_sdk import VUTTrackerFleet
 
     with VUTTrackerFleet() as fleet:
         for tid, pose in fleet.get_all_poses().items():
