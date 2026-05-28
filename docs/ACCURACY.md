@@ -67,7 +67,7 @@ For research deployments, characterise your specific
 environment using the benchmark tool (v0.3) before
 collecting study data.
 
-## Noise Floor (measured via VT Headless SDK)   -  !! MORE Valifation needed!! 
+## Noise Floor (measured via VT Headless SDK)   -  !!! More validation Needed!!! 
 
 Methodology: single tracker placed on rigid stationary 
 surface, recorded for 65 seconds at 64.1Hz, 
