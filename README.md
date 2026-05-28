@@ -1,4 +1,4 @@
-# VT Headless SDK
+# **Unofficial VT Headless SDK **
 
 > ⚠️ **Alpha Release — v0.2.1-alpha**
 > This SDK is in early development. APIs may change
@@ -17,7 +17,7 @@ over WebSocket for robotics, motion capture, and body tracking.
 
 ## What this is
 
-VT Headless SDK bridges SteamVR and Python, streaming live 6DoF poses
+*** Unofficial VT Headless SDK bridges SteamVR and Python, streaming live 6DoF poses
 from VIVE Ultimate Trackers to any application via WebSocket.
 
 - Real-time position + orientation per tracker
