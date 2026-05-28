@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="vut-sdk",
+    name="vt-sdk",
     version="0.1.0a0",
     description=(
         "Unofficial community SDK for headless 6DoF spatial "

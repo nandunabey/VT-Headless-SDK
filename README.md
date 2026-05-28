@@ -77,7 +77,7 @@ START_VT_SDK.bat
 
 **Step 2 — Check tracker status:**
 ```bash
-python -m vut_sdk.tools.vut_status
+python -m vt_sdk.tools.vut_status
 ```
 
 **Step 3 — Connect your app:**
@@ -98,7 +98,7 @@ asyncio.run(receive_poses())
 
 ### Using the Python SDK directly
 ```python
-from vut_sdk.tracker import VUTTracker
+from vt_sdk.tracker import VUTTracker
 
 tracker = VUTTracker("41-A33204726")  # serial number
 tracker.connect()
@@ -117,7 +117,7 @@ tracker.stream()  # blocks, calls on_pose at --fps rate
 
 ### Multiple trackers simultaneously
 ```python
-from vut_sdk.fleet import VUTTrackerFleet
+from vt_sdk.fleet import VUTTrackerFleet
 
 fleet = VUTTrackerFleet()
 fleet.connect_all()
@@ -262,7 +262,7 @@ See [docs/ACCURACY.md](docs/ACCURACY.md) for full characterisation.
 ## Related projects
 
 ### vut-skeleton
-17-joint body tracking skeleton solver built on vut-sdk.
+17-joint body tracking skeleton solver built on vt-sdk.
 5 VIVE Ultimate Trackers → full body pose with inferred joints.
 https://github.com/nandunabey/vt-skeleton
 

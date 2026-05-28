@@ -11,7 +11,7 @@ Run:
 import argparse
 import sys
 import time
-from vut_sdk import VUTTracker, DaemonNotRunning, PoseTimeout
+from vt_sdk import VUTTracker, DaemonNotRunning, PoseTimeout
 
 parser = argparse.ArgumentParser(description="Robot arm end-effector tracking.")
 parser.add_argument("--id", dest="tracker_id", default=None, help="Tracker serial ID")
