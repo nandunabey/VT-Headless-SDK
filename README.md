@@ -11,7 +11,7 @@
 Headless 6DoF pose streaming for VUT's and Tracker 3.0's.
 
 No HMD. No VR headset. Tracker poses streamed directly
-over WebSocket for robotics, motion capture, body trackin and agentic workflow via a MCP server 
+over WebSocket for robotics, motion capture, body trackin and agentic workflows via a MCP server 
 
 ---
 
