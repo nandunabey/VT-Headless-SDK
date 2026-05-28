@@ -1,4 +1,4 @@
-# **Unofficial VT Headless SDK **
+# **VT Headless SDK ** (Unofficial)
 
 > ⚠️ **Alpha Release — v0.2.1-alpha**
 > This SDK is in early development. APIs may change
