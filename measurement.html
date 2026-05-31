@@ -524,7 +524,7 @@ function ingestPoses(d) {
       if (fcEl) fcEl.textContent = nfSamples.length;
     }
   }
-  if (nfActive) updateNfDropdown();
+  if (nfActive && listChanged) updateNfDropdown();
 }
 
 // ── Tracker list ──────────────────────────────────────────────────────────────
@@ -941,7 +941,7 @@ function updateNfDropdown() {
   } else {
     sel.innerHTML = '<option value="">No trackers available</option>';
   }
-  nfSerial = sel.value || null;
+  if (!nfCapturing) nfSerial = sel.value || null;
 }
 
 function startNfCapture() {
