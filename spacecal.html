@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIVE Tracker — Space Calibration</title>
+<style>
+  :root {
+    --bg:    #0a0a0a; --panel: #111111; --border: #1e1e1e;
+    --cyan:  #00ffcc; --amber: #ffaa00; --red:    #ff4444;
+    --green: #00e676; --text:  #cccccc; --muted:  #aaaaaa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text); font-family: monospace;
+    height: 100vh; overflow: hidden;
+    display: grid;
+    grid-template-rows: 46px 1fr 30px;
+    grid-template-columns: 340px 1fr;
+  }
+
+  /* ── Header ── */
+  header {
+    grid-row:1; grid-column:1/-1;
+    background: var(--panel); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; padding:0 18px; gap:14px;
+  }
+  .h-title { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text); }
+  .h-title em { color:var(--cyan); font-style:normal; }
+  .h-sep { flex:1; }
+  .conn-status { display:flex; align-items:center; gap:6px; font-size:10px; }
+  .conn-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; transition:background .3s; }
+  .conn-dot.live         { background:var(--green); box-shadow:0 0 5px var(--green); animation:blink 2s infinite; }
+  .conn-dot.reconnecting { background:var(--amber); animation:blink .5s infinite; }
+  .conn-dot.disconnected { background:var(--red); }
+  .conn-dot.waiting      { background:var(--muted); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .h-back {
+    font-size:9px; color:var(--text); text-decoration:none; letter-spacing:1px;
+    padding:4px 8px; border:1px solid #3a3a3a; border-radius:2px;
+    opacity:.75; transition:color .2s, border-color .2s, opacity .2s;
+  }
+  .h-back:hover { color:var(--cyan); border-color:var(--cyan); opacity:1; }
+
+  /* ── Left column ── */
+  .left-col {
+    grid-row:2; grid-column:1;
+    background:var(--panel); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden; min-height:0;
+  }
+  .panel-hdr {
+    font-size:10px; letter-spacing:4px; text-transform:uppercase; color:#fff;
+    padding:11px 14px 9px; border-bottom:1px solid var(--border); flex-shrink:0;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .left-scroll { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px; }
+  .left-scroll::-webkit-scrollbar { width:3px; }
+  .left-scroll::-webkit-scrollbar-thumb { background:var(--border); }
+
+  .field-label { font-size:9px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:5px; display:block; }
+  .cal-select {
+    width:100%; background:#141414; border:1px solid #2a2a2a;
+    color:var(--text); font-family:monospace; font-size:11px;
+    padding:7px 10px; border-radius:2px; outline:none; cursor:pointer;
+    -webkit-appearance:none; appearance:none;
+  }
+  .cal-select:focus { border-color:var(--cyan); }
+
+  .attach-instr {
+    font-size:10px; color:var(--muted); line-height:1.8;
+    border:1px solid #282828; border-left:2px solid rgba(0,255,204,.3);
+    border-radius:2px; padding:10px 12px;
+    background:rgba(255,255,255,.012);
+  }
+  .attach-instr strong { color:var(--cyan); }
+
+  .sec-divider { border:none; border-top:1px solid var(--border); margin:0; }
+
+  .status-chip {
+    display:inline-block; font-size:9px; letter-spacing:2px; text-transform:uppercase;
+    padding:3px 8px; border-radius:2px; border:1px solid currentColor;
+  }
+  .status-idle     { color:var(--muted); border-color:#3a3a3a; }
+  .status-capturing{ color:var(--cyan);  border-color:var(--cyan);  background:rgba(0,255,204,.07); }
+  .status-solved   { color:var(--green); border-color:var(--green); background:rgba(0,230,118,.07); }
+
+  .cal-btn {
+    font-size:10px; padding:9px 18px; border-radius:2px; font-family:monospace;
+    letter-spacing:2px; text-transform:uppercase; cursor:pointer;
+    transition:background .15s, box-shadow .15s, opacity .15s;
+    width:100%;
+  }
+  .cal-btn.primary { border:1px solid var(--cyan); color:var(--cyan); background:rgba(0,255,204,.06); }
+  .cal-btn.primary:hover:not(:disabled) { background:rgba(0,255,204,.12); box-shadow:0 0 10px rgba(0,255,204,.15); }
+  .cal-btn.danger  { border:1px solid var(--amber); color:var(--amber); background:rgba(255,170,0,.06); }
+  .cal-btn.danger:hover { background:rgba(255,170,0,.12); }
+  .cal-btn.accept  { border:1px solid var(--green); color:var(--green); background:rgba(0,230,118,.06); }
+  .cal-btn.accept:hover { background:rgba(0,230,118,.12); }
+  .cal-btn:disabled { opacity:.35; cursor:default; }
+
+  .sample-count { font-size:11px; color:var(--text); font-variant-numeric:tabular-nums; }
+  .sample-count span { color:var(--cyan); }
+
+  .variety-warn {
+    font-size:10px; color:var(--amber);
+    border:1px solid rgba(255,170,0,.3); border-radius:2px; padding:7px 10px;
+    background:rgba(255,170,0,.05);
+  }
+
+  .btn-row { display:flex; gap:8px; }
+  .btn-row .cal-btn { flex:1; }
+
+  /* ── Right column ── */
+  .right-col {
+    grid-row:2; grid-column:2;
+    display:flex; flex-direction:column; overflow:hidden; min-height:0;
+  }
+  .right-hdr {
+    font-size:10px; letter-spacing:4px; text-transform:uppercase; color:#fff;
+    padding:11px 18px 9px; border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .right-body {
+    flex:1; overflow-y:auto; padding:24px 24px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .right-body::-webkit-scrollbar { width:3px; }
+  .right-body::-webkit-scrollbar-thumb { background:var(--border); }
+
+  /* idle phase */
+  .idle-box {
+    text-align:center; font-size:11px; letter-spacing:1px;
+    border:1px solid #282828; border-top:2px solid rgba(0,255,204,.22);
+    border-radius:3px; padding:28px 36px; background:rgba(255,255,255,.012);
+    max-width:420px; width:100%;
+  }
+  .idle-box h2 { font-size:12px; color:#fff; letter-spacing:3px; margin-bottom:16px; }
+  .idle-steps { text-align:left; font-size:10px; color:var(--muted); line-height:2; }
+  .idle-steps span { color:var(--cyan); display:inline-block; min-width:18px; }
+
+  /* capture phase */
+  .capture-area { width:100%; max-width:440px; }
+  .cap-instr {
+    font-size:11px; color:var(--muted); line-height:1.85; text-align:center;
+    border:1px solid #282828; border-left:2px solid rgba(0,255,204,.3);
+    border-radius:2px; padding:12px 16px; margin-bottom:20px;
+    background:rgba(255,255,255,.012);
+  }
+  .cap-instr strong { color:#fff; }
+
+  .speed-section { margin-bottom:20px; }
+  .speed-label-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .speed-label-row .lbl { font-size:9px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; }
+  .speed-val { font-size:13px; color:var(--text); font-variant-numeric:tabular-nums; }
+  .speed-val.ok  { color:var(--green); }
+  .speed-val.hi  { color:var(--red); }
+
+  .speed-track {
+    height:8px; background:#1a1a1a; border-radius:2px; overflow:hidden;
+    border:1px solid var(--border); position:relative;
+  }
+  .speed-fill { height:100%; border-radius:2px; transition:width .1s, background .1s; }
+  .speed-gate-mark {
+    position:absolute; top:0; bottom:0; width:2px; background:rgba(255,255,255,.25);
+    left:50%; /* SPEED_GATE / max_display_speed * 100% = 0.15/0.30*100 = 50% */
+  }
+
+  .sec-label { font-size:9px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; text-align:center; margin-bottom:8px; }
+  .cov-grid { display:grid; grid-template-columns:24px 1fr 48px; gap:6px 8px; align-items:center; margin-bottom:16px; }
+  .cov-ax { font-size:9px; color:var(--muted); text-align:center; }
+  .cov-track { height:6px; background:#1a1a1a; border-radius:2px; overflow:hidden; border:1px solid var(--border); }
+  .cov-fill { height:100%; border-radius:2px; transition:width .3s, background .3s; max-width:100%; }
+  .cov-val { font-size:9px; color:var(--text); text-align:right; font-variant-numeric:tabular-nums; }
+
+  /* results phase */
+  .big-val { font-size:64px; color:var(--cyan); text-align:center; line-height:1; margin:10px 0 4px; font-variant-numeric:tabular-nums; letter-spacing:-2px; text-shadow:0 0 40px rgba(0,255,204,.18); transition:color .25s; }
+  .big-unit { font-size:24px; color:var(--muted); letter-spacing:0; }
+  .big-sub  { font-size:13px; color:var(--muted); text-align:center; margin-bottom:16px; letter-spacing:1px; }
+  .verdict-box { font-size:11px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; padding:7px 20px; border-radius:2px; margin:8px 0 16px; text-align:center; }
+  .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:100%; max-width:380px; margin-bottom:12px; }
+  .stat-cell { background:#141414; border:1px solid #2a2a2a; border-radius:2px; padding:10px 8px; text-align:center; }
+  .stat-lbl  { font-size:8px; color:var(--muted); letter-spacing:1px; margin-bottom:5px; text-transform:uppercase; }
+  .stat-val  { font-size:15px; color:var(--text); font-variant-numeric:tabular-nums; }
+  .cal-ref   { font-size:9px; color:#555; letter-spacing:1px; margin:6px 0; text-align:center; }
+  .sec-sep   { width:100%; max-width:400px; border:none; border-top:1px solid var(--border); margin:14px 0; }
+
+  /* existing cal banner */
+  .existing-cal-box {
+    width:100%; max-width:440px; font-size:10px; line-height:1.9;
+    border:1px solid #2a2a2a; border-radius:2px; padding:10px 14px;
+    background:#111; margin-top:16px;
+  }
+  .existing-cal-box .lbl { font-size:9px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+  .existing-cal-box .val { color:var(--text); }
+  .existing-cal-box .good { color:var(--green); }
+  .existing-cal-box .warn { color:var(--amber); }
+
+  /* ── Status bar ── */
+  .statusbar {
+    grid-row:3; grid-column:1/-1;
+    background:var(--panel); border-top:1px solid var(--border);
+    display:flex; align-items:center; padding:0 14px; gap:16px;
+    font-size:9px; color:var(--text); letter-spacing:1px;
+  }
+  .sb-item { display:flex; align-items:center; gap:5px; }
+  .sb-v    { color:var(--text); font-weight:500; }
+  .sb-sep  { flex:1; }
+  .sb-msg  { transition:color .3s; }
+  .sb-msg.ok  { color:var(--green); }
+  .sb-msg.err { color:var(--red); }
+
+  /* banners */
+  #banner-stack { position:fixed; top:46px; left:0; right:0; z-index:1000; display:flex; flex-direction:column; pointer-events:none; }
+  .banner { display:flex; align-items:flex-start; gap:12px; padding:12px 20px; font-size:13px; font-weight:bold; color:#fff; pointer-events:all; line-height:1.5; }
+  .banner.error   { background:#ff4444; }
+  .banner.warning { background:#ffaa00; }
+  .banner.success { background:#00aa66; }
+  .banner-msg { flex:1; }
+  .banner-close { background:none; border:none; color:#fff; font-size:18px; line-height:1; cursor:pointer; padding:0; opacity:.8; flex-shrink:0; }
+  .banner-close:hover { opacity:1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-title">VIVE <em>TRACKER</em> — SPACE CALIBRATION</div>
+  <div class="h-sep"></div>
+  <div class="conn-status">
+    <div class="conn-dot waiting" id="conn-dot"></div>
+    <span id="conn-text" style="color:var(--muted)">WAITING</span>
+    <span style="color:var(--muted);font-size:9px">&nbsp;ws://localhost:8765</span>
+  </div>
+  <a href="http://localhost:8080/visualiser.html" class="h-back">← VISUALISER</a>
+</header>
+
+<!-- ── Left column ── -->
+<div class="left-col">
+  <div class="panel-hdr">SETUP</div>
+  <div class="left-scroll">
+
+    <!-- Tracker pair selection -->
+    <div>
+      <label class="field-label">VUT Tracker (41- / 42-)</label>
+      <select id="sel-vut" class="cal-select" onchange="onPairChange()">
+        <option value="">Waiting for trackers…</option>
+      </select>
+    </div>
+    <div>
+      <label class="field-label">Lighthouse Tracker (LHR-)</label>
+      <select id="sel-lh" class="cal-select" onchange="onPairChange()">
+        <option value="">Waiting for trackers…</option>
+      </select>
+    </div>
+
+    <div class="attach-instr">
+      Attach the selected <strong>VUT</strong> and <strong>Lighthouse</strong>
+      tracker together rigidly (tape&nbsp;/&nbsp;mount as one unit).
+      They must not move relative to each other.
+    </div>
+
+    <hr class="sec-divider">
+
+    <!-- Status -->
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span class="field-label" style="margin:0">STATUS</span>
+      <span class="status-chip status-idle" id="status-chip">IDLE</span>
+    </div>
+
+    <!-- Start button -->
+    <button class="cal-btn primary" id="btn-start" onclick="startCapture()" disabled>
+      START CALIBRATION
+    </button>
+
+    <!-- Stop button (shown during capture) -->
+    <button class="cal-btn danger" id="btn-stop" onclick="stopCapture()" style="display:none">
+      STOP CAPTURE
+    </button>
+
+    <!-- Sample count -->
+    <div class="sample-count" id="sample-count" style="display:none">
+      Good samples: <span id="sample-n">0</span> / 100 minimum
+    </div>
+
+    <!-- Variety warning -->
+    <div class="variety-warn" id="variety-warn" style="display:none">
+      ⚠ Need more rotation variety — tilt and rotate the pair, not just translate
+    </div>
+
+    <!-- Solve button -->
+    <button class="cal-btn primary" id="btn-solve" onclick="doSolve()" style="display:none" disabled>
+      SOLVE CALIBRATION
+    </button>
+
+    <!-- Post-solve actions -->
+    <div class="btn-row" id="post-solve" style="display:none">
+      <button class="cal-btn accept" onclick="acceptCalibration()">ACCEPT &amp; SAVE</button>
+      <button class="cal-btn danger" onclick="redo()">REDO</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Right column ── -->
+<div class="right-col">
+  <div class="right-hdr" id="right-hdr">SPACE CALIBRATION</div>
+  <div class="right-body">
+
+    <!-- Phase: IDLE -->
+    <div id="phase-idle" class="idle-box">
+      <h2>ALIGN VUT ↔ LIGHTHOUSE</h2>
+      <div class="idle-steps">
+        <div><span>1.</span> Select a VUT and Lighthouse tracker on the left</div>
+        <div><span>2.</span> Attach them rigidly together (tape / clamp)</div>
+        <div><span>3.</span> Click START CALIBRATION</div>
+        <div><span>4.</span> Move the pair <em style="color:var(--cyan)">slowly</em> through varied positions &amp; orientations — like calibrating a phone compass</div>
+        <div><span>5.</span> Click SOLVE when ≥ 100 good samples collected</div>
+        <div><span>6.</span> Review quality and click ACCEPT &amp; SAVE</div>
+      </div>
+      <div id="existing-cal-idle" style="display:none"></div>
+    </div>
+
+    <!-- Phase: CAPTURING -->
+    <div id="phase-capture" class="capture-area" style="display:none">
+      <div class="cap-instr">
+        Move the rigid pair <strong>SLOWLY</strong> through varied positions
+        <strong>AND</strong> orientations.<br>
+        Like calibrating a phone compass. Cover the space.
+      </div>
+
+      <!-- Speed indicator -->
+      <div class="speed-section">
+        <div class="speed-label-row">
+          <span class="lbl">SPEED</span>
+          <span class="speed-val" id="speed-val">0.000 m/s</span>
+        </div>
+        <div class="speed-track">
+          <div class="speed-fill" id="speed-fill" style="width:0%;background:var(--green)"></div>
+          <div class="speed-gate-mark"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px">
+          <span style="font-size:8px;color:var(--muted)">0</span>
+          <span style="font-size:8px;color:var(--muted)">GATE: 0.15 m/s</span>
+          <span style="font-size:8px;color:var(--muted)">0.30 m/s</span>
+        </div>
+      </div>
+
+      <!-- Coverage -->
+      <div class="sec-label">POSITION COVERAGE</div>
+      <div class="cov-grid">
+        <span class="cov-ax">X</span>
+        <div class="cov-track"><div class="cov-fill" id="cov-x" style="width:0%"></div></div>
+        <span class="cov-val" id="cov-xv">0.0m</span>
+
+        <span class="cov-ax">Y</span>
+        <div class="cov-track"><div class="cov-fill" id="cov-y" style="width:0%"></div></div>
+        <span class="cov-val" id="cov-yv">0.0m</span>
+
+        <span class="cov-ax">Z</span>
+        <div class="cov-track"><div class="cov-fill" id="cov-z" style="width:0%"></div></div>
+        <span class="cov-val" id="cov-zv">0.0m</span>
+      </div>
+
+      <div style="font-size:9px;color:var(--muted);text-align:center">
+        Coverage bars saturate at 2.0m per axis
+      </div>
+    </div>
+
+    <!-- Phase: RESULTS -->
+    <div id="phase-results" style="display:none;width:100%;max-width:440px;display:none;flex-direction:column;align-items:center">
+      <div class="sec-label">MEAN RESIDUAL</div>
+      <div class="big-val" id="res-mean-big">—<span class="big-unit"> mm</span></div>
+      <div class="big-sub" id="res-sub">—</div>
+      <div class="verdict-box" id="verdict-box">—</div>
+      <div class="stat-grid">
+        <div class="stat-cell"><div class="stat-lbl">Mean</div><div class="stat-val" id="res-mean">—</div></div>
+        <div class="stat-cell"><div class="stat-lbl">Median</div><div class="stat-val" id="res-med">—</div></div>
+        <div class="stat-cell"><div class="stat-lbl">P95</div><div class="stat-val" id="res-p95">—</div></div>
+      </div>
+      <div class="cal-ref" id="res-info"></div>
+      <hr class="sec-sep">
+      <div class="cal-ref">Reference: slow-gated Kabsch (position-only)</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Status bar ── -->
+<div class="statusbar">
+  <div class="sb-item">TRACKERS <span class="sb-v" id="sb-trackers">0</span></div>
+  <div class="sb-item">SAMPLES <span class="sb-v" id="sb-samples">0</span></div>
+  <div class="sb-item">SPEED <span class="sb-v" id="sb-speed">— m/s</span></div>
+  <div class="sb-sep"></div>
+  <span class="sb-msg" id="sb-msg"></span>
+</div>
+
+<div id="banner-stack"></div>
+
+<script>
+const WS_URL    = 'ws://localhost:8765';
+const HTTP_BASE = 'http://localhost:8080';
+const SPEED_GATE   = 0.15;   // m/s — gate threshold
+const MAX_SPEED_UI = 0.30;   // m/s — full-scale for speed bar
+const MIN_SAMPLES  = 100;
+const COV_MAX_M    = 2.0;    // m — bar saturates at this coverage
+
+// ── State ────────────────────────────────────────────────────────────────────
+const trackers = new Map();
+let vutSerial  = null;
+let lhSerial   = null;
+let captureActive = false;
+let calSamples    = [];   // [{v:[x,y,z], l:[x,y,z]}]
+let lhPrevPos     = null;
+let lhPrevT       = null;
+let lhSpeed       = 0;
+let calResult     = null; // {R, t, quality, vutSerial, lhSerial}
+let appState      = 'idle'; // 'idle' | 'capturing' | 'solved'
+
+// Bounding box of LH positions during capture (for coverage display)
+let bbMin = [Infinity,Infinity,Infinity];
+let bbMax = [-Infinity,-Infinity,-Infinity];
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+let ws = null, wsRetries = 0;
+
+function setConn(s) {
+  const dot  = document.getElementById('conn-dot');
+  const txt  = document.getElementById('conn-text');
+  dot.className = 'conn-dot ' + s;
+  const map = {
+    live:         ['LIVE',          'var(--green)'],
+    reconnecting: ['RECONNECTING…', 'var(--amber)'],
+    disconnected: ['DISCONNECTED',  'var(--muted)'],
+    waiting:      ['WAITING',       'var(--muted)'],
+  };
+  const [l, c] = map[s] || map.waiting;
+  txt.textContent = l; txt.style.color = c;
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen  = () => { wsRetries = 0; setConn('live'); };
+  ws.onclose = () => {
+    setConn(wsRetries > 0 ? 'reconnecting' : 'disconnected');
+    wsRetries++;
+    setTimeout(connect, 2000);
+  };
+  ws.onerror = () => setConn('reconnecting');
+  ws.onmessage = e => {
+    let d; try { d = JSON.parse(e.data); } catch { return; }
+    if (!d.type && d.meta !== undefined) ingestPoses(d);
+  };
+}
+
+function ingestPoses(d) {
+  let activeCount = 0;
+  const liveVut = [], liveLh = [];
+  const nowT = performance.now() / 1000;
+
+  for (const [serial, entry] of Object.entries(d)) {
+    if (serial === 'meta' || !entry?.position) continue;
+    activeCount++;
+    let trk = trackers.get(serial);
+    if (!trk) {
+      trk = { serial, trackerType: entry.tracker_type || detectType(serial), pos: {x:0,y:0,z:0}, status:'tracking' };
+      trackers.set(serial, trk);
+    }
+    trk.pos    = { x: entry.position.x, y: entry.position.y, z: entry.position.z };
+    trk.status = 'tracking';
+    if (trk.trackerType === 'vut')        liveVut.push(serial);
+    else if (trk.trackerType === 'lighthouse') liveLh.push(serial);
+  }
+  for (const [serial, trk] of trackers)
+    if (!d[serial]?.position && trk.status !== 'lost') trk.status = 'lost';
+
+  document.getElementById('sb-trackers').textContent = activeCount;
+  updateDropdowns(liveVut, liveLh);
+
+  if (captureActive) processFrame(d, nowT);
+}
+
+function detectType(serial) {
+  if (serial.toUpperCase().startsWith('LHR-')) return 'lighthouse';
+  if (serial.startsWith('41-') || serial.startsWith('42-')) return 'vut';
+  return 'unknown';
+}
+
+// ── Dropdown management ───────────────────────────────────────────────────────
+let _lastVutList = '', _lastLhList = '';
+
+function updateDropdowns(liveVut, liveLh) {
+  const vutKey = liveVut.sort().join(',');
+  const lhKey  = liveLh.sort().join(',');
+  if (vutKey === _lastVutList && lhKey === _lastLhList) return;
+  _lastVutList = vutKey; _lastLhList = lhKey;
+
+  const selVut = document.getElementById('sel-vut');
+  const selLh  = document.getElementById('sel-lh');
+  const prevVut = vutSerial, prevLh = lhSerial;
+
+  selVut.innerHTML = liveVut.length
+    ? liveVut.map(s => `<option value="${esc(s)}"${s===prevVut?' selected':''}>${esc(s)}</option>`).join('')
+    : '<option value="">No VUT trackers</option>';
+
+  selLh.innerHTML = liveLh.length
+    ? liveLh.map(s => `<option value="${esc(s)}"${s===prevLh?' selected':''}>${esc(s)}</option>`).join('')
+    : '<option value="">No LH trackers</option>';
+
+  if (!captureActive) {
+    vutSerial = selVut.value || null;
+    lhSerial  = selLh.value  || null;
+  }
+  updateStartBtn();
+}
+
+function onPairChange() {
+  if (captureActive) return;
+  vutSerial = document.getElementById('sel-vut').value || null;
+  lhSerial  = document.getElementById('sel-lh').value  || null;
+  updateStartBtn();
+}
+
+function updateStartBtn() {
+  document.getElementById('btn-start').disabled = !(vutSerial && lhSerial && appState === 'idle');
+}
+
+// ── Capture lifecycle ─────────────────────────────────────────────────────────
+function startCapture() {
+  vutSerial = document.getElementById('sel-vut').value || null;
+  lhSerial  = document.getElementById('sel-lh').value  || null;
+  if (!vutSerial || !lhSerial) { showMsg('Select both trackers first', 'err'); return; }
+
+  calSamples   = [];
+  lhPrevPos    = null;
+  lhPrevT      = null;
+  lhSpeed      = 0;
+  bbMin = [Infinity,Infinity,Infinity];
+  bbMax = [-Infinity,-Infinity,-Infinity];
+  captureActive = true;
+  appState      = 'capturing';
+
+  setPhase('capturing');
+  document.getElementById('btn-start').style.display  = 'none';
+  document.getElementById('btn-stop').style.display   = '';
+  document.getElementById('sample-count').style.display = '';
+  document.getElementById('btn-solve').style.display  = '';
+  document.getElementById('post-solve').style.display = 'none';
+  setStatusChip('capturing');
+  updateSampleUI();
+}
+
+function stopCapture() {
+  captureActive = false;
+  appState = 'idle';
+  setPhase('idle');
+  document.getElementById('btn-start').style.display  = '';
+  document.getElementById('btn-stop').style.display   = 'none';
+  document.getElementById('sample-count').style.display = 'none';
+  document.getElementById('btn-solve').style.display  = 'none';
+  document.getElementById('variety-warn').style.display = 'none';
+  setStatusChip('idle');
+  updateStartBtn();
+}
+
+function redo() {
+  calResult = null;
+  appState  = 'idle';
+  document.getElementById('post-solve').style.display = 'none';
+  document.getElementById('btn-start').style.display  = '';
+  setStatusChip('idle');
+  setPhase('idle');
+  updateStartBtn();
+}
+
+// ── Per-frame processing during capture ───────────────────────────────────────
+function processFrame(d, nowT) {
+  const vutEntry = d[vutSerial];
+  const lhEntry  = d[lhSerial];
+  if (!vutEntry?.position || !lhEntry?.position) return;
+
+  const vPos = [vutEntry.position.x, vutEntry.position.y, vutEntry.position.z];
+  const lPos = [lhEntry.position.x,  lhEntry.position.y,  lhEntry.position.z];
+
+  // Compute LH speed
+  if (lhPrevPos !== null && lhPrevT !== null) {
+    const dt = nowT - lhPrevT;
+    if (dt > 0 && dt < 1) {
+      const dx = lPos[0]-lhPrevPos[0], dy = lPos[1]-lhPrevPos[1], dz = lPos[2]-lhPrevPos[2];
+      lhSpeed = Math.sqrt(dx*dx+dy*dy+dz*dz) / dt;
+    }
+  }
+  lhPrevPos = lPos;
+  lhPrevT   = nowT;
+
+  updateSpeedUI(lhSpeed);
+
+  // Gate: only collect slow samples
+  if (lhSpeed < SPEED_GATE) {
+    calSamples.push({ v: vPos, l: lPos });
+    // Update bounding box
+    for (let i=0;i<3;i++) {
+      if (lPos[i] < bbMin[i]) bbMin[i] = lPos[i];
+      if (lPos[i] > bbMax[i]) bbMax[i] = lPos[i];
+    }
+    updateCoverageUI();
+    updateSampleUI();
+  }
+
+  document.getElementById('sb-speed').textContent   = lhSpeed.toFixed(3) + ' m/s';
+  document.getElementById('sb-samples').textContent = calSamples.length;
+}
+
+// ── Speed indicator UI ────────────────────────────────────────────────────────
+function updateSpeedUI(speed) {
+  const pct  = Math.min(100, (speed / MAX_SPEED_UI) * 100);
+  const ok   = speed < SPEED_GATE;
+  const col  = ok ? 'var(--green)' : speed < SPEED_GATE * 1.5 ? 'var(--amber)' : 'var(--red)';
+  document.getElementById('speed-fill').style.width      = pct + '%';
+  document.getElementById('speed-fill').style.background = col;
+  const valEl = document.getElementById('speed-val');
+  valEl.textContent = speed.toFixed(3) + ' m/s';
+  valEl.className   = 'speed-val ' + (ok ? 'ok' : 'hi');
+}
+
+// ── Coverage bars ─────────────────────────────────────────────────────────────
+function updateCoverageUI() {
+  const axes = ['x','y','z'];
+  for (let i = 0; i < 3; i++) {
+    const span = bbMax[i] - bbMin[i];
+    const pct  = Math.min(100, (span / COV_MAX_M) * 100);
+    const col  = span >= 1.0 ? 'var(--green)' : span >= 0.5 ? 'var(--amber)' : 'var(--red)';
+    const fill = document.getElementById('cov-' + axes[i]);
+    const val  = document.getElementById('cov-' + axes[i] + 'v');
+    if (fill) { fill.style.width = pct + '%'; fill.style.background = col; }
+    if (val)  val.textContent = isFinite(span) ? span.toFixed(2) + 'm' : '0.0m';
+  }
+}
+
+// ── Sample count + solve button state ────────────────────────────────────────
+function updateSampleUI() {
+  const n = calSamples.length;
+  document.getElementById('sample-n').textContent = n;
+  const solveBtn = document.getElementById('btn-solve');
+  if (solveBtn) solveBtn.disabled = n < MIN_SAMPLES;
+}
+
+// ── Status chip ───────────────────────────────────────────────────────────────
+function setStatusChip(state) {
+  const el = document.getElementById('status-chip');
+  el.className = 'status-chip status-' + state;
+  el.textContent = state.toUpperCase();
+}
+
+// ── Phase panels ─────────────────────────────────────────────────────────────
+function setPhase(phase) {
+  document.getElementById('phase-idle').style.display    = phase === 'idle'    ? '' : 'none';
+  document.getElementById('phase-capture').style.display = phase === 'capturing' ? '' : 'none';
+  const res = document.getElementById('phase-results');
+  res.style.display = phase === 'results' ? 'flex' : 'none';
+  const hdr = document.getElementById('right-hdr');
+  hdr.textContent = phase === 'idle' ? 'SPACE CALIBRATION'
+                  : phase === 'capturing' ? 'CAPTURING — MOVE SLOWLY'
+                  : 'CALIBRATION RESULT';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MATH — 3×3 matrix helpers + Jacobi SVD + Kabsch
+// ══════════════════════════════════════════════════════════════════════════════
+
+function mT(A) {
+  return [[A[0][0],A[1][0],A[2][0]],
+          [A[0][1],A[1][1],A[2][1]],
+          [A[0][2],A[1][2],A[2][2]]];
+}
+
+function mMul(A, B) {
+  const C = [[0,0,0],[0,0,0],[0,0,0]];
+  for (let i=0;i<3;i++) for (let j=0;j<3;j++) for (let k=0;k<3;k++) C[i][j]+=A[i][k]*B[k][j];
+  return C;
+}
+
+function mVec(A, v) {
+  return [
+    A[0][0]*v[0]+A[0][1]*v[1]+A[0][2]*v[2],
+    A[1][0]*v[0]+A[1][1]*v[1]+A[1][2]*v[2],
+    A[2][0]*v[0]+A[2][1]*v[1]+A[2][2]*v[2],
+  ];
+}
+
+function mDet(A) {
+  return A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1])
+        -A[0][1]*(A[1][0]*A[2][2]-A[1][2]*A[2][0])
+        +A[0][2]*(A[1][0]*A[2][1]-A[1][1]*A[2][0]);
+}
+
+function cross3(a, b) {
+  return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+}
+
+function norm3(v) {
+  const n = Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+  return n < 1e-12 ? v : v.map(x => x/n);
+}
+
+// Jacobi eigendecomposition of symmetric 3×3 matrix M.
+// Returns {vals:[3 eigenvalues], vecs:3×3 (columns = eigenvectors)}.
+function symEig3(M) {
+  let A = M.map(r => [...r]);
+  let Q = [[1,0,0],[0,1,0],[0,0,1]];
+  for (let it = 0; it < 100; it++) {
+    let big = 0, p = 0, q = 1;
+    for (let i=0;i<3;i++) for (let j=i+1;j<3;j++)
+      if (Math.abs(A[i][j]) > big) { big = Math.abs(A[i][j]); p = i; q = j; }
+    if (big < 1e-14) break;
+    const tau = (A[q][q] - A[p][p]) / (2 * A[p][q]);
+    const t   = (tau >= 0 ? 1 : -1) / (Math.abs(tau) + Math.sqrt(tau*tau + 1));
+    const c   = 1 / Math.sqrt(1 + t*t);
+    const s   = t * c;
+    const App = c*c*A[p][p] - 2*s*c*A[p][q] + s*s*A[q][q];
+    const Aqq = s*s*A[p][p] + 2*s*c*A[p][q] + c*c*A[q][q];
+    A[p][p] = App; A[q][q] = Aqq; A[p][q] = A[q][p] = 0;
+    const r = [0,1,2].find(i => i!==p && i!==q);
+    const Apr = c*A[p][r] - s*A[q][r];
+    const Aqr = s*A[p][r] + c*A[q][r];
+    A[p][r] = A[r][p] = Apr; A[q][r] = A[r][q] = Aqr;
+    for (let i=0;i<3;i++) {
+      const Qip = Q[i][p], Qiq = Q[i][q];
+      Q[i][p] = c*Qip - s*Qiq;
+      Q[i][q] = s*Qip + c*Qiq;
+    }
+  }
+  return { vals:[A[0][0],A[1][1],A[2][2]], vecs:Q };
+}
+
+// SVD of 3×3 matrix A → {U, S:[3 singular values], Vt}
+function svd3(A) {
+  const AtA = mMul(mT(A), A);
+  let { vals, vecs: V } = symEig3(AtA);
+  const ord = [0,1,2].sort((a,b) => vals[b] - vals[a]);
+  const S = ord.map(i => Math.sqrt(Math.max(0, vals[i])));
+  const sV = [[0,0,0],[0,0,0],[0,0,0]];
+  for (let j=0;j<3;j++) for (let i=0;i<3;i++) sV[i][j] = V[i][ord[j]];
+  V = sV;
+  const U = [[0,0,0],[0,0,0],[0,0,0]];
+  for (let j=0;j<3;j++) {
+    const vj  = [V[0][j],V[1][j],V[2][j]];
+    const Avj = mVec(A, vj);
+    const sj  = S[j];
+    if (sj > 1e-10) { for (let i=0;i<3;i++) U[i][j] = Avj[i]/sj; }
+  }
+  // Complete U columns for degenerate configurations
+  if (S[2] < 1e-10) {
+    const u2 = norm3(cross3([U[0][0],U[1][0],U[2][0]], [U[0][1],U[1][1],U[2][1]]));
+    for (let i=0;i<3;i++) U[i][2] = u2[i];
+  }
+  if (S[1] < 1e-10) {
+    const u1 = norm3(cross3([U[0][2],U[1][2],U[2][2]], [U[0][0],U[1][0],U[2][0]]));
+    for (let i=0;i<3;i++) U[i][1] = u1[i];
+  }
+  return { U, S, Vt: mT(V) };
+}
+
+// Kabsch: find R,t such that L[i] ≈ R @ V[i] + t  (VUT → LH)
+function kabsch(vPts, lPts) {
+  const n = vPts.length;
+  let mv = [0,0,0], ml = [0,0,0];
+  for (let i=0;i<n;i++) {
+    for (let k=0;k<3;k++) { mv[k]+=vPts[i][k]; ml[k]+=lPts[i][k]; }
+  }
+  mv = mv.map(v => v/n); ml = ml.map(v => v/n);
+
+  // H = Vc^T @ Lc
+  const H = [[0,0,0],[0,0,0],[0,0,0]];
+  for (let i=0;i<n;i++) {
+    const vc = vPts[i].map((v,k) => v - mv[k]);
+    const lc = lPts[i].map((v,k) => v - ml[k]);
+    for (let r=0;r<3;r++) for (let c=0;c<3;c++) H[r][c] += vc[r]*lc[c];
+  }
+
+  const { U, Vt } = svd3(H);
+  const d = mDet(mMul(mT(Vt), mT(U)));
+  const D = [[1,0,0],[0,1,0],[0,0,Math.sign(d) || 1]];
+  const R = mMul(mT(Vt), mMul(D, mT(U)));
+  const Rmv = mVec(R, mv);
+  const t = ml.map((v,k) => v - Rmv[k]);
+  return { R, t };
+}
+
+// Compute per-sample residuals (mm) after Kabsch transform
+function computeResiduals(R, t, vPts, lPts) {
+  return vPts.map((v, i) => {
+    const pred = mVec(R, v).map((x,k) => x + t[k]);
+    const l = lPts[i];
+    const dx = pred[0]-l[0], dy = pred[1]-l[1], dz = pred[2]-l[2];
+    return Math.sqrt(dx*dx+dy*dy+dz*dz) * 1000; // → mm
+  });
+}
+
+// Orientation variety: smallest eigenvalue of covariance of LH positions (m²)
+function orientationVariety(lPts) {
+  const n = lPts.length;
+  const mean = [0,0,0];
+  for (const p of lPts) { mean[0]+=p[0]; mean[1]+=p[1]; mean[2]+=p[2]; }
+  mean[0]/=n; mean[1]/=n; mean[2]/=n;
+  const cov = [[0,0,0],[0,0,0],[0,0,0]];
+  for (const p of lPts) {
+    const c = p.map((v,i)=>v-mean[i]);
+    for (let r=0;r<3;r++) for (let cc=0;cc<3;cc++) cov[r][cc]+=c[r]*c[cc];
+  }
+  for (let r=0;r<3;r++) for (let cc=0;cc<3;cc++) cov[r][cc]/=n;
+  const { vals } = symEig3(cov);
+  return Math.min(...vals); // < 0.01 → warn (less than ~10cm std dev in smallest direction)
+}
+
+// ── Solve ─────────────────────────────────────────────────────────────────────
+function doSolve() {
+  if (calSamples.length < MIN_SAMPLES) { showMsg('Not enough samples', 'err'); return; }
+
+  const vPts = calSamples.map(s => s.v);
+  const lPts = calSamples.map(s => s.l);
+
+  // Orientation variety check
+  const minVar = orientationVariety(lPts);
+  const warnEl = document.getElementById('variety-warn');
+  warnEl.style.display = minVar < 0.01 ? '' : 'none';
+
+  const { R, t } = kabsch(vPts, lPts);
+  const residuals = computeResiduals(R, t, vPts, lPts).sort((a,b)=>a-b);
+  const n = residuals.length;
+  const mean   = residuals.reduce((a,b)=>a+b,0) / n;
+  const median = n % 2 === 0 ? (residuals[n/2-1]+residuals[n/2])/2 : residuals[(n-1)/2];
+  const p95    = residuals[Math.ceil(n * 0.95) - 1];
+
+  calResult = {
+    R, t,
+    quality: { samples_used: n, mean_residual_mm: mean, median_residual_mm: median, p95_residual_mm: p95 },
+    vutSerial, lhSerial,
+  };
+
+  captureActive = false;
+  appState = 'solved';
+
+  document.getElementById('btn-stop').style.display   = 'none';
+  document.getElementById('btn-solve').style.display  = 'none';
+  document.getElementById('sample-count').style.display = 'none';
+  document.getElementById('variety-warn').style.display = 'none';
+  document.getElementById('post-solve').style.display = '';
+  setStatusChip('solved');
+  renderResults(calResult.quality, mean);
+  setPhase('results');
+}
+
+function renderResults(q, mean) {
+  const { verdict, color } = qualityVerdict(q.mean_residual_mm);
+  const bigEl = document.getElementById('res-mean-big');
+  bigEl.innerHTML = q.mean_residual_mm.toFixed(2) + '<span class="big-unit"> mm</span>';
+  bigEl.style.color = color;
+  document.getElementById('res-sub').textContent = 'mean residual';
+  const vEl = document.getElementById('verdict-box');
+  vEl.textContent = verdict;
+  vEl.style.color      = color;
+  vEl.style.borderColor = color;
+  vEl.style.background  = color.replace('var(--','rgba(').replace(')',',0.08)') || color + '14';
+  document.getElementById('res-mean').textContent = q.mean_residual_mm.toFixed(2) + 'mm';
+  document.getElementById('res-med').textContent  = q.median_residual_mm.toFixed(2) + 'mm';
+  document.getElementById('res-p95').textContent  = q.p95_residual_mm.toFixed(2) + 'mm';
+  document.getElementById('res-info').textContent =
+    `${q.samples_used} samples · VUT: ${calResult.vutSerial} · LH: ${calResult.lhSerial}`;
+}
+
+function qualityVerdict(mean) {
+  if (mean <  5) return { verdict: 'Excellent',                                        color: 'var(--green)' };
+  if (mean < 15) return { verdict: 'Good',                                              color: 'var(--cyan)'  };
+  if (mean < 30) return { verdict: 'Fair',                                              color: 'var(--amber)' };
+  return               { verdict: 'Poor — recapture with slower movement',             color: 'var(--red)'   };
+}
+
+// ── Accept / Save ─────────────────────────────────────────────────────────────
+async function acceptCalibration() {
+  if (!calResult) return;
+  const payload = {
+    version:    1,
+    created_at: new Date().toISOString(),
+    vut_serial: calResult.vutSerial,
+    lh_serial:  calResult.lhSerial,
+    direction:  'vut_to_lh',
+    rotation:   calResult.R,
+    translation: calResult.t,
+    quality:    calResult.quality,
+  };
+  try {
+    const r = await fetch(HTTP_BASE + '/spacecal/save', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+    const resp = await r.json();
+    if (resp.status === 'ok') {
+      showMsg('Calibration saved. Restart daemon with --space-cal unify to activate.', 'ok');
+      document.getElementById('btn-start').style.display = '';
+      updateStartBtn();
+    } else {
+      showMsg('Save failed: ' + (resp.message || 'unknown error'), 'err');
+    }
+  } catch (err) {
+    showMsg('Save error: ' + err.message, 'err');
+  }
+}
+
+// ── Load existing calibration ─────────────────────────────────────────────────
+async function loadExistingCal() {
+  try {
+    const r = await fetch(HTTP_BASE + '/spacecal/current');
+    if (!r.ok) return;
+    const cal = await r.json();
+    if (!cal || !cal.vut_serial) return;
+    const q = cal.quality || {};
+    const { verdict, color } = qualityVerdict(q.mean_residual_mm || 99);
+    const d = new Date(cal.created_at).toLocaleString();
+    const html = `
+      <div class="existing-cal-box" style="margin-top:16px">
+        <div class="lbl">Existing Calibration</div>
+        <div>VUT: <span class="val">${esc(cal.vut_serial)}</span></div>
+        <div>LH: <span class="val">${esc(cal.lh_serial)}</span></div>
+        <div>Saved: <span class="val">${esc(d)}</span></div>
+        <div>Mean residual: <span style="color:${color}">${(q.mean_residual_mm||0).toFixed(2)}mm — ${verdict}</span></div>
+        <div>Mode: <span class="val">${esc(cal.direction || 'vut_to_lh')}</span></div>
+      </div>`;
+    const el = document.getElementById('existing-cal-idle');
+    el.innerHTML = html; el.style.display = '';
+  } catch { }
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showMsg(msg, cls) {
+  const stack = document.getElementById('banner-stack');
+  const el    = document.createElement('div');
+  el.className = 'banner ' + (cls === 'ok' ? 'success' : cls === 'err' ? 'error' : 'warning');
+  const msgEl = document.createElement('div'); msgEl.className = 'banner-msg'; msgEl.textContent = msg;
+  const close = document.createElement('button'); close.className = 'banner-close'; close.textContent = '✕';
+  el.appendChild(msgEl); el.appendChild(close); stack.appendChild(el);
+  const dur = cls === 'ok' ? 4000 : 9000;
+  const timer = setTimeout(() => el.remove(), dur);
+  close.onclick = () => { clearTimeout(timer); el.remove(); };
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+connect();
+loadExistingCal();
+</script>
+</body>
+</html>

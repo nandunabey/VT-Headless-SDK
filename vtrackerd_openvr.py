@@ -50,6 +50,7 @@ VUT_SDK_DIR   = Path(__file__).resolve().parent          # C:\Users\vive_\dev\vu
 ROLES_FILE    = VUT_SDK_DIR / "tracker_roles.json"
 RECORDINGS_DIR = VUT_SDK_DIR / "recordings"
 ANCHORS_FILE   = VUT_SDK_DIR / "anchors.json"
+SPACECAL_FILE = VUT_SDK_DIR / "space_calibration.json"
 SCAN_DIR      = VUT_SDK_DIR / "scan_app"
 SCAN_HTML     = SCAN_DIR / "scan.html"
 SESSIONS_DIR  = VUT_SDK_DIR / "sessions"
@@ -82,6 +83,65 @@ _rec_frames: list = []          # list of {"timestamp": float, "poses": dict}
 _rec_started_at: float = 0.0
 
 _play_active   = False
+
+# ---------------------------------------------------------------------------
+# Space calibration state
+# ---------------------------------------------------------------------------
+_spacecal_config: dict | None = None   # loaded calibration JSON or None
+_spacecal_mode:   str         = "off"  # "off" | "unify"
+_spacecal_R_quat: tuple       = (1.0, 0.0, 0.0, 0.0)  # rotation as quaternion (w,x,y,z)
+
+
+def _rot_mat_to_quat(R: list) -> tuple:
+    """Convert 3×3 rotation matrix (list of lists) to quaternion (w,x,y,z)."""
+    m = R
+    trace = m[0][0] + m[1][1] + m[2][2]
+    if trace > 0:
+        s  = 0.5 / math.sqrt(trace + 1.0)
+        qw = 0.25 / s
+        qx = (m[2][1] - m[1][2]) * s
+        qy = (m[0][2] - m[2][0]) * s
+        qz = (m[1][0] - m[0][1]) * s
+    elif m[0][0] > m[1][1] and m[0][0] > m[2][2]:
+        s  = 2.0 * math.sqrt(1.0 + m[0][0] - m[1][1] - m[2][2])
+        qw = (m[2][1] - m[1][2]) / s
+        qx = 0.25 * s
+        qy = (m[0][1] + m[1][0]) / s
+        qz = (m[0][2] + m[2][0]) / s
+    elif m[1][1] > m[2][2]:
+        s  = 2.0 * math.sqrt(1.0 + m[1][1] - m[0][0] - m[2][2])
+        qw = (m[0][2] - m[2][0]) / s
+        qx = (m[0][1] + m[1][0]) / s
+        qy = 0.25 * s
+        qz = (m[1][2] + m[2][1]) / s
+    else:
+        s  = 2.0 * math.sqrt(1.0 + m[2][2] - m[0][0] - m[1][1])
+        qw = (m[1][0] - m[0][1]) / s
+        qx = (m[0][2] + m[2][0]) / s
+        qy = (m[1][2] + m[2][1]) / s
+        qz = 0.25 * s
+    return (qw, qx, qy, qz)
+
+
+def _quat_mul(q1: tuple, q2: tuple) -> tuple:
+    """Hamilton product of two quaternions (w,x,y,z)."""
+    w1, x1, y1, z1 = q1
+    w2, x2, y2, z2 = q2
+    return (
+        w1*w2 - x1*x2 - y1*y2 - z1*z2,
+        w1*x2 + x1*w2 + y1*z2 - z1*y2,
+        w1*y2 - x1*z2 + y1*w2 + z1*x2,
+        w1*z2 + x1*y2 - y1*x2 + z1*w2,
+    )
+
+
+def _load_spacecal() -> dict | None:
+    if SPACECAL_FILE.is_file():
+        try:
+            return json.loads(SPACECAL_FILE.read_text())
+        except Exception:
+            return None
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -119,6 +179,8 @@ class _HttpHandler(SimpleHTTPRequestHandler):
             self._get_sessions()
         elif path == "/calibration/anchors":
             self._get_calibration_anchors()
+        elif path == "/spacecal/current":
+            self._get_spacecal_current()
         else:
             super().do_GET()
 
@@ -137,6 +199,7 @@ class _HttpHandler(SimpleHTTPRequestHandler):
             "/api/session":               self._post_api_session,
             "/api/scan/watch/start":      self._post_watch_start,
             "/api/scan/watch/stop":       self._post_watch_stop,
+            "/spacecal/save":             self._post_spacecal_save,
         }
         handler = routes.get(path)
         if handler is None:
@@ -529,6 +592,36 @@ class _HttpHandler(SimpleHTTPRequestHandler):
         print(f"\n  [map watcher] disarmed")
         self._json_resp({"status": "ok"})
 
+    # ── /spacecal/current ─────────────────────────────────────────────────────
+    def _get_spacecal_current(self):
+        if SPACECAL_FILE.is_file():
+            try:
+                self._json_resp(json.loads(SPACECAL_FILE.read_text()))
+                return
+            except Exception:
+                pass
+        self._json_resp({"error": "no calibration saved"}, 404)
+
+    # ── /spacecal/save ────────────────────────────────────────────────────────
+    def _post_spacecal_save(self):
+        global _spacecal_config, _spacecal_mode, _spacecal_R_quat
+        body = self._read_body()
+        try:
+            cal = json.loads(body)
+            if not isinstance(cal, dict):
+                raise ValueError("Expected object")
+            for key in ("rotation", "translation", "vut_serial", "lh_serial"):
+                if key not in cal:
+                    raise ValueError(f"Missing field: {key}")
+            SPACECAL_FILE.write_text(json.dumps(cal, indent=2))
+            # Hot-reload so daemon picks it up without restart if already in unify mode
+            _spacecal_config = cal
+            if _spacecal_mode == "unify":
+                _spacecal_R_quat = _rot_mat_to_quat(cal["rotation"])
+            self._json_resp({"status": "ok", "file": SPACECAL_FILE.name})
+        except Exception as exc:
+            self._json_resp({"status": "error", "message": str(exc)}, 400)
+
     # ── Helpers ───────────────────────────────────────────────────────────────
     def _read_body(self) -> bytes:
         length = int(self.headers.get("Content-Length", 0))
@@ -740,13 +833,38 @@ async def _main_loop(vr, trackers, broadcast_hz: int):
                 pps_count = 0
                 pps_t0    = t0
 
+            # ── Apply space calibration (unify mode) ──────────────────────
+            if _spacecal_mode == "unify" and _spacecal_config is not None:
+                R = _spacecal_config["rotation"]
+                t = _spacecal_config["translation"]
+                for serial, pose in serial_poses.items():
+                    if get_tracker_type(serial) != "vut":
+                        continue
+                    p = pose["position"]
+                    px, py, pz = p["x"], p["y"], p["z"]
+                    p["x"] = round(R[0][0]*px + R[0][1]*py + R[0][2]*pz + t[0], 4)
+                    p["y"] = round(R[1][0]*px + R[1][1]*py + R[1][2]*pz + t[1], 4)
+                    p["z"] = round(R[2][0]*px + R[2][1]*py + R[2][2]*pz + t[2], 4)
+                    q = pose["rotation"]
+                    qout = _quat_mul(_spacecal_R_quat, (q["w"], q["x"], q["y"], q["z"]))
+                    pose["rotation"]["w"] = round(qout[0], 6)
+                    pose["rotation"]["x"] = round(qout[1], 6)
+                    pose["rotation"]["y"] = round(qout[2], 6)
+                    pose["rotation"]["z"] = round(qout[3], 6)
+
+            cal_residual = None
+            if _spacecal_config:
+                cal_residual = (_spacecal_config.get("quality") or {}).get("median_residual_mm")
+
             payload = dict(serial_poses)
             payload["meta"] = {
-                "fps":              broadcast_hz,
-                "latency_ms":       latency_ms,
-                "tracker_count":    len(serial_poses),
-                "vut_count":        sum(1 for s in serial_poses if get_tracker_type(s) == "vut"),
-                "lighthouse_count": sum(1 for s in serial_poses if get_tracker_type(s) == "lighthouse"),
+                "fps":                   broadcast_hz,
+                "latency_ms":            latency_ms,
+                "tracker_count":         len(serial_poses),
+                "vut_count":             sum(1 for s in serial_poses if get_tracker_type(s) == "vut"),
+                "lighthouse_count":      sum(1 for s in serial_poses if get_tracker_type(s) == "lighthouse"),
+                "space_calibration":     _spacecal_mode,
+                "calibration_residual_mm": cal_residual,
             }
             _latest_msg = json.dumps(payload)
 
@@ -801,6 +919,10 @@ def main():
         "--fps", type=int, default=30, choices=[30, 60, 100],
         help="Broadcast rate (30=~33ms, 60=~17ms, 100=~10ms latency)",
     )
+    parser.add_argument(
+        "--space-cal", choices=["off", "unify"], default=None, dest="space_cal",
+        help="Space calibration mode: off (default) or unify (apply VUT→LH transform)",
+    )
     args = parser.parse_args()
     latency_ms = round(1000 / args.fps)
 
@@ -836,11 +958,22 @@ def main():
         openvr.shutdown()
         sys.exit(1)
 
-    global _trackers
+    global _trackers, _spacecal_config, _spacecal_mode, _spacecal_R_quat
     _trackers = trackers          # expose to HTTP handlers via module-level ref
+
+    # Load space calibration
+    _spacecal_config = _load_spacecal()
+    if args.space_cal is not None:
+        _spacecal_mode = args.space_cal
+    elif _spacecal_config is not None:
+        _spacecal_mode = "off"   # explicit opt-in required; file present but mode defaults off
+    if _spacecal_mode == "unify" and _spacecal_config is not None:
+        _spacecal_R_quat = _rot_mat_to_quat(_spacecal_config["rotation"])
 
     print(f"\n  {len(trackers)} tracker(s) found")
     print(f"  [OK] Broadcast rate  : {args.fps} fps (~{latency_ms}ms latency)")
+    cal_status = "unify" if _spacecal_mode == "unify" else ("file present, mode=off" if _spacecal_config else "no file")
+    print(f"  [OK] Space cal       : {cal_status}")
 
     _start_http()
     _start_map_watcher()

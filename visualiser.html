@@ -411,6 +411,8 @@
   <div class="h-sep"></div>
   <div id="h-view-mode">TOP-DOWN · XZ</div>
   <div class="h-sep"></div>
+  <div id="h-spacecal" style="display:none;font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--cyan);padding:3px 8px;border:1px solid var(--cyan);border-radius:2px;background:rgba(0,229,255,.07);white-space:nowrap"></div>
+  <div class="h-sep"></div>
   <div class="conn-status">
     <div class="conn-dot waiting" id="conn-dot"></div>
     <span id="conn-text" style="color:var(--muted)">WAITING</span>
@@ -445,6 +447,7 @@
     <a href="http://localhost:8080/recorder.html"   class="setup-link">⏺ Recorder</a>
     <a href="http://localhost:8080/measurement.html" class="setup-link">📐 Measurement</a>
     <a href="http://localhost:8080/calibration.html" class="setup-link">⊕ Calibration</a>
+    <a href="http://localhost:8080/spacecal.html"    class="setup-link">⇄ Space Cal</a>
   </div>
   <div id="connect-prompt">
     <div class="spinner"></div>
@@ -1350,6 +1353,19 @@ function connect() {
       }
       const set = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
       set('gs-fps', (meta?.fps ?? '—') + ' fps');
+
+      // Space calibration header chip
+      const scEl = document.getElementById('h-spacecal');
+      if (scEl) {
+        const scMode = meta?.space_calibration;
+        if (scMode && scMode !== 'off') {
+          const res = meta?.calibration_residual_mm;
+          scEl.textContent = 'SPACE CAL: ' + scMode.toUpperCase() + (res != null ? ' (' + res.toFixed(1) + 'mm)' : '');
+          scEl.style.display = '';
+        } else {
+          scEl.style.display = 'none';
+        }
+      }
 
       const lhCount  = meta?.lighthouse_count ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'lighthouse').length;
       const vutCount = meta?.vut_count        ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'vut').length;
