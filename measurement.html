@@ -26,7 +26,7 @@
     height: 100vh;
     overflow: hidden;
     display: grid;
-    grid-template-rows: 46px 1fr 190px 30px;
+    grid-template-rows: 46px auto 1fr 190px 30px;
     grid-template-columns: 290px 1fr;
   }
 
@@ -59,7 +59,7 @@
 
   /* ── Left column — tracker list ── */
   .left-col {
-    grid-row: 2; grid-column: 1;
+    grid-row: 3; grid-column: 1;
     background: var(--panel);
     border-right: 1px solid var(--border);
     display: flex;
@@ -113,7 +113,7 @@
   .tc-ax     { color: var(--muted); flex-shrink: 0; }
 
   /* ── Right column — measurements ── */
-  .right-col { grid-row: 2; grid-column: 2; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+  .right-col { grid-row: 3; grid-column: 2; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
   .meas-hdr {
     font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: #fff;
     padding: 11px 18px 9px;
@@ -161,7 +161,7 @@
 
   /* ── History ── */
   .history-col {
-    grid-row: 3; grid-column: 1 / -1;
+    grid-row: 4; grid-column: 1 / -1;
     background: var(--panel); border-top: 1px solid var(--border);
     display: flex; flex-direction: column; overflow: hidden;
   }
@@ -185,7 +185,7 @@
 
   /* ── Status bar ── */
   .statusbar {
-    grid-row: 4; grid-column: 1 / -1;
+    grid-row: 5; grid-column: 1 / -1;
     background: var(--panel); border-top: 1px solid var(--border);
     display: flex; align-items: center; padding: 0 14px; gap: 16px;
     font-size: 9px; color: var(--text); letter-spacing: 1px;
@@ -197,9 +197,9 @@
   .sb-msg.ok  { color: var(--green); }
   .sb-msg.err { color: var(--red); }
 
-  /* ── How-to (fixed overlay — does not affect grid) ── */
+  /* ── How-to (grid row 2 — pushes content down, never overlaps) ── */
   .howto-bar {
-    position: fixed; top: 46px; left: 0; right: 0; z-index: 200;
+    grid-row: 2; grid-column: 1 / -1;
     background: var(--panel); border-bottom: 1px solid var(--border); padding: 0 20px;
     transition: box-shadow .2s, border-bottom-color .2s;
   }
