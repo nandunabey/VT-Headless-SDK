@@ -1072,6 +1072,7 @@ function renderNfResults(s) {
       <div class="nf-stat-cell"><div class="nf-stat-label">duration</div><div class="nf-stat-val">${s.duration.toFixed(1)}s</div></div>
       <div class="nf-stat-cell"><div class="nf-stat-label">sample rate</div><div class="nf-stat-val">${s.hz.toFixed(1)} Hz</div></div>
     </div>
+    ${!isLH ? '<div class="nf-ref">~34 Hz is the VUT SLAM native pose rate — normal at 60 Hz broadcast</div>' : ''}
     <div style="margin-top:16px;display:flex;gap:10px">
       <button class="nf-btn" onclick="copyNfResults()">COPY RESULTS</button>
     </div>`;
