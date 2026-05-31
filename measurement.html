@@ -222,6 +222,77 @@
   .banner-msg  { flex: 1; }
   .banner-close { background: none; border: none; color: #fff; font-size: 18px; line-height: 1; cursor: pointer; padding: 0; opacity: .8; flex-shrink: 0; font-weight: bold; }
   .banner-close:hover { opacity: 1; }
+
+  /* ── Mode tabs ── */
+  .mode-tabs { display: flex; gap: 4px; }
+  .mode-tab {
+    font-size: 9px; padding: 3px 9px; border: 1px solid #3a3a3a;
+    border-radius: 2px; background: transparent; color: var(--muted);
+    letter-spacing: 1px; cursor: pointer; font-family: monospace; text-transform: uppercase;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .mode-tab:hover  { color: var(--text); border-color: #555; }
+  .mode-tab.active { color: var(--cyan); border-color: var(--cyan); background: rgba(0,255,204,.08); }
+
+  /* ── Noise floor panel ── */
+  .nf-panel {
+    flex: 1; overflow-y: auto; padding: 24px 20px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .nf-panel::-webkit-scrollbar       { width: 3px; }
+  .nf-panel::-webkit-scrollbar-thumb { background: var(--border); }
+  .nf-select {
+    width: 100%; background: #141414; border: 1px solid #2a2a2a;
+    color: var(--text); font-family: monospace; font-size: 11px;
+    padding: 8px 10px; border-radius: 2px; outline: none; cursor: pointer;
+    -webkit-appearance: none; appearance: none;
+  }
+  .nf-select:focus { border-color: var(--cyan); }
+  .nf-instr {
+    width: 100%; max-width: 420px; font-size: 11px; color: var(--muted);
+    line-height: 1.8; border: 1px solid #282828; border-left: 2px solid rgba(0,255,204,.3);
+    border-radius: 2px; padding: 12px 14px; margin: 14px 0;
+    background: rgba(255,255,255,.012);
+  }
+  .nf-btn {
+    font-size: 11px; padding: 10px 28px; border: 1px solid var(--cyan);
+    border-radius: 2px; background: rgba(0,255,204,.06); color: var(--cyan);
+    font-family: monospace; letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; transition: background .15s, box-shadow .15s;
+  }
+  .nf-btn:hover    { background: rgba(0,255,204,.12); box-shadow: 0 0 12px rgba(0,255,204,.15); }
+  .nf-btn:disabled { opacity: .4; cursor: default; background: transparent; box-shadow: none; }
+  .nf-countdown {
+    font-size: 72px; color: var(--cyan); line-height: 1; font-variant-numeric: tabular-nums;
+    letter-spacing: -2px; text-shadow: 0 0 40px rgba(0,255,204,.25);
+    text-align: center; margin: 8px 0 4px; transition: color .3s;
+  }
+  .nf-countdown.urgent { color: var(--amber); text-shadow: 0 0 40px rgba(255,170,0,.25); }
+  .nf-stat-grid {
+    width: 100%; max-width: 420px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0;
+  }
+  .nf-stat-cell {
+    background: #141414; border: 1px solid #2a2a2a; border-radius: 2px;
+    padding: 10px 8px; text-align: center;
+  }
+  .nf-stat-label { font-size: 8px; color: var(--muted); letter-spacing: 1px; margin-bottom: 5px; text-transform: uppercase; }
+  .nf-stat-val   { font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .nf-rms-big {
+    font-size: 62px; text-align: center; line-height: 1; margin: 8px 0 4px;
+    font-variant-numeric: tabular-nums; letter-spacing: -2px;
+  }
+  .nf-rms-big .unit { font-size: 26px; color: var(--muted); }
+  .nf-verdict {
+    font-size: 12px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase;
+    padding: 8px 20px; border-radius: 2px; margin: 10px 0; text-align: center;
+  }
+  .nf-ref  { font-size: 9px; color: #555; letter-spacing: 1px; margin-top: 6px; text-align: center; }
+  .nf-warn {
+    width: 100%; max-width: 420px; font-size: 10px; color: var(--amber);
+    border: 1px solid rgba(255,170,0,.3); border-radius: 2px; padding: 9px 12px;
+    margin: 10px 0; background: rgba(255,170,0,.05);
+  }
 </style>
 </head>
 <body>
@@ -260,7 +331,13 @@
 </div>
 
 <div class="right-col">
-  <div class="meas-hdr">MEASUREMENTS</div>
+  <div class="meas-hdr" style="display:flex;align-items:center;justify-content:space-between">
+    <span>MEASUREMENTS</span>
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab-measure"    onclick="setMode('measure')">MEASURE</button>
+      <button class="mode-tab"        id="tab-noisefloor" onclick="setMode('noisefloor')">NOISE FLOOR</button>
+    </div>
+  </div>
   <div class="meas-body" id="meas-body">
     <div class="meas-empty">
       <div style="font-size:13px;color:#fff;letter-spacing:2px;margin-bottom:10px">NO TRACKERS SELECTED</div>
@@ -272,6 +349,7 @@
       </div>
     </div>
   </div>
+  <div class="nf-panel" id="nf-panel" style="display:none"></div>
 </div>
 
 <div class="history-col">
@@ -314,6 +392,15 @@ let lastSelKey = '';   // string key to detect when panel needs full rebuild
 let historyLog = [];
 let lastLogMs  = 0;
 let frameCount = 0;
+
+// ── Noise floor state ─────────────────────────────────────────────────────────
+let nfActive       = false;
+let nfCapturing    = false;
+let nfSerial       = null;
+let nfSamples      = [];
+let nfCountdownVal = 30;
+let nfIntervalId   = null;
+let nfStartTime    = null;
 
 // ── Roles ─────────────────────────────────────────────────────────────────────
 async function loadRoles() {
@@ -428,6 +515,16 @@ function ingestPoses(d) {
   const meta = d.meta || {};
   document.getElementById('sb-fps').textContent      = (meta.fps ?? '—') + ' fps';
   document.getElementById('sb-trackers').textContent = activeCount;
+
+  if (nfCapturing && nfSerial) {
+    const nfTrk = trackers.get(nfSerial);
+    if (nfTrk && nfTrk.status === 'tracking') {
+      nfSamples.push({ ...nfTrk.pos });
+      const fcEl = document.getElementById('nf-fc');
+      if (fcEl) fcEl.textContent = nfSamples.length;
+    }
+  }
+  if (nfActive) updateNfDropdown();
 }
 
 // ── Tracker list ──────────────────────────────────────────────────────────────
@@ -545,6 +642,7 @@ function esc(s)    { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 
 // ── Measurement panel ─────────────────────────────────────────────────────────
 function updateMeasurements() {
+  if (nfActive) return;
   const body = document.getElementById('meas-body');
   const modeEl = document.getElementById('sb-mode');
 
@@ -785,6 +883,232 @@ function showBanner(msg, type) {
 }
 function showMsg(msg, cls) {
   showBanner(msg, cls === 'ok' ? 'success' : cls === 'err' ? 'error' : 'warning');
+}
+
+// ── Noise floor ───────────────────────────────────────────────────────────────
+function setMode(mode) {
+  nfActive = (mode === 'noisefloor');
+  document.getElementById('tab-measure').classList.toggle('active', !nfActive);
+  document.getElementById('tab-noisefloor').classList.toggle('active', nfActive);
+  document.getElementById('meas-body').style.display = nfActive ? 'none' : 'flex';
+  document.getElementById('nf-panel').style.display  = nfActive ? 'flex' : 'none';
+  document.getElementById('sb-mode').textContent = nfActive ? 'NOISE FLOOR' : '—';
+  if (nfActive) {
+    renderNfPanel();
+  } else {
+    if (nfCapturing) cancelNfCapture();
+    lastSelKey = '';
+    updateMeasurements();
+  }
+}
+
+function renderNfPanel() {
+  const panel = document.getElementById('nf-panel');
+  panel.innerHTML = `
+    <div style="width:100%;max-width:420px">
+      <div class="sec-label" style="text-align:left;margin-bottom:6px">SELECT TRACKER</div>
+      <select class="nf-select" id="nf-select" onchange="nfSerial=this.value"></select>
+    </div>
+    <div class="nf-instr">
+      Place the tracker on a rigid, stationary surface.<br>
+      Do not touch it during measurement.<br>
+      Click <strong style="color:var(--cyan)">Start</strong> to record 30 seconds.
+    </div>
+    <div id="nf-live" style="display:none;text-align:center;width:100%;max-width:420px">
+      <div class="sec-label">TIME REMAINING</div>
+      <div class="nf-countdown" id="nf-cd">30</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+        <span id="nf-fc">0</span> frames captured
+      </div>
+    </div>
+    <div style="margin:16px 0;display:flex;gap:10px">
+      <button class="nf-btn" id="nf-start-btn" onclick="startNfCapture()">START MEASUREMENT</button>
+    </div>
+    <div id="nf-results-area" style="display:none;width:100%;max-width:420px"></div>`;
+  updateNfDropdown();
+}
+
+function updateNfDropdown() {
+  const sel = document.getElementById('nf-select');
+  if (!sel) return;
+  const prev  = nfSerial;
+  const alive = Array.from(trackers.entries()).filter(([, t]) => t.status === 'tracking');
+  if (alive.length) {
+    sel.innerHTML = alive.map(([s, t]) => {
+      const lbl = t.trackerType === 'lighthouse' ? 'LH' : 'VUT';
+      return `<option value="${esc(s)}"${s === prev ? ' selected' : ''}>${esc(t.name)} — ${esc(s)} (${lbl})</option>`;
+    }).join('');
+  } else {
+    sel.innerHTML = '<option value="">No trackers available</option>';
+  }
+  nfSerial = sel.value || null;
+}
+
+function startNfCapture() {
+  nfSerial = document.getElementById('nf-select')?.value || null;
+  if (!nfSerial) { showMsg('Select a tracker first', 'err'); return; }
+  const trk = trackers.get(nfSerial);
+  if (!trk || trk.status !== 'tracking') { showMsg('Tracker not tracking', 'err'); return; }
+
+  nfSamples      = [];
+  nfCapturing    = true;
+  nfCountdownVal = 30;
+  nfStartTime    = performance.now();
+
+  document.getElementById('nf-live').style.display         = '';
+  document.getElementById('nf-results-area').style.display = 'none';
+  const btn = document.getElementById('nf-start-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'RECORDING…'; }
+  const cdEl = document.getElementById('nf-cd');
+  if (cdEl) { cdEl.textContent = '30'; cdEl.className = 'nf-countdown'; }
+  const fcEl = document.getElementById('nf-fc');
+  if (fcEl) fcEl.textContent = '0';
+
+  nfIntervalId = setInterval(() => {
+    nfCountdownVal--;
+    const cd = document.getElementById('nf-cd');
+    if (cd) {
+      cd.textContent = nfCountdownVal;
+      cd.className   = 'nf-countdown' + (nfCountdownVal <= 5 ? ' urgent' : '');
+    }
+    if (nfCountdownVal <= 0) finishNfCapture();
+  }, 1000);
+}
+
+function cancelNfCapture() {
+  nfCapturing = false;
+  clearInterval(nfIntervalId);
+  nfIntervalId = null;
+}
+
+function finishNfCapture() {
+  clearInterval(nfIntervalId);
+  nfIntervalId = null;
+  nfCapturing  = false;
+
+  const btn = document.getElementById('nf-start-btn');
+  if (btn) { btn.disabled = false; btn.textContent = 'START MEASUREMENT'; }
+  const liveEl = document.getElementById('nf-live');
+  if (liveEl) liveEl.style.display = 'none';
+
+  if (nfSamples.length < 2) { showMsg('Not enough samples captured', 'err'); return; }
+  const duration = (performance.now() - nfStartTime) / 1000;
+  renderNfResults(computeNoiseStats(nfSamples, duration));
+}
+
+function computeNoiseStats(samples, duration) {
+  const n = samples.length;
+  let sumX = 0, sumY = 0, sumZ = 0;
+  for (const p of samples) { sumX += p.x; sumY += p.y; sumZ += p.z; }
+  const mX = sumX / n, mY = sumY / n, mZ = sumZ / n;
+
+  let vX = 0, vY = 0, vZ = 0;
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  for (const p of samples) {
+    vX += (p.x - mX) ** 2; vY += (p.y - mY) ** 2; vZ += (p.z - mZ) ** 2;
+    if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+    if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z;
+  }
+  vX /= n; vY /= n; vZ /= n;
+  const toMm = 1000;
+  return {
+    stdX:     Math.sqrt(vX)               * toMm,
+    stdY:     Math.sqrt(vY)               * toMm,
+    stdZ:     Math.sqrt(vZ)               * toMm,
+    rms3d:    Math.sqrt(vX + vY + vZ)     * toMm,
+    rangeX:   (maxX - minX)               * toMm,
+    rangeY:   (maxY - minY)               * toMm,
+    rangeZ:   (maxZ - minZ)               * toMm,
+    maxRange: Math.max(maxX - minX, maxY - minY, maxZ - minZ) * toMm,
+    n, duration, hz: n / duration,
+  };
+}
+
+function renderNfResults(s) {
+  const area = document.getElementById('nf-results-area');
+  if (!area) return;
+
+  const trk   = trackers.get(nfSerial);
+  const isLH  = trk?.trackerType === 'lighthouse';
+  const { verdict, verdictColor } = noiseVerdict(s.rms3d, isLH);
+
+  const warnHtml = s.maxRange > 5 ? `
+    <div class="nf-warn">
+      &#9888; Movement detected (range ${s.maxRange.toFixed(1)}mm) — tracker may have been bumped.
+      Results may not reflect true noise floor.
+    </div>` : '';
+
+  area.style.display = '';
+  area.innerHTML = `
+    ${warnHtml}
+    <hr class="sec-sep" style="max-width:none;margin:4px 0 14px">
+    <div class="sec-label">3D RMS NOISE</div>
+    <div class="nf-rms-big" style="color:${verdictColor};text-shadow:0 0 40px ${verdictColor}44">
+      ${s.rms3d.toFixed(2)}<span class="unit"> mm</span>
+    </div>
+    <div class="nf-verdict" style="color:${verdictColor};border:1px solid ${verdictColor};background:${verdictColor}18">
+      ${esc(verdict)}
+    </div>
+    <div class="nf-ref">SDK reference: 0.30mm 3D RMS</div>
+    <hr class="sec-sep" style="max-width:none;margin:14px 0 6px">
+    <div class="sec-label">PER-AXIS STD DEV</div>
+    <div class="nf-stat-grid">
+      <div class="nf-stat-cell"><div class="nf-stat-label">X std dev</div><div class="nf-stat-val">${s.stdX.toFixed(2)}mm</div></div>
+      <div class="nf-stat-cell"><div class="nf-stat-label">Y std dev</div><div class="nf-stat-val">${s.stdY.toFixed(2)}mm</div></div>
+      <div class="nf-stat-cell"><div class="nf-stat-label">Z std dev</div><div class="nf-stat-val">${s.stdZ.toFixed(2)}mm</div></div>
+    </div>
+    <div class="sec-label" style="margin-top:4px">PEAK-TO-PEAK RANGE</div>
+    <div class="nf-stat-grid">
+      <div class="nf-stat-cell"><div class="nf-stat-label">X range</div><div class="nf-stat-val">${s.rangeX.toFixed(2)}mm</div></div>
+      <div class="nf-stat-cell"><div class="nf-stat-label">Y range</div><div class="nf-stat-val">${s.rangeY.toFixed(2)}mm</div></div>
+      <div class="nf-stat-cell"><div class="nf-stat-label">Z range</div><div class="nf-stat-val">${s.rangeZ.toFixed(2)}mm</div></div>
+    </div>
+    <div class="sec-label" style="margin-top:4px">CAPTURE STATS</div>
+    <div class="nf-stat-grid">
+      <div class="nf-stat-cell"><div class="nf-stat-label">frames</div><div class="nf-stat-val">${s.n}</div></div>
+      <div class="nf-stat-cell"><div class="nf-stat-label">duration</div><div class="nf-stat-val">${s.duration.toFixed(1)}s</div></div>
+      <div class="nf-stat-cell"><div class="nf-stat-label">sample rate</div><div class="nf-stat-val">${s.hz.toFixed(1)} Hz</div></div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <button class="nf-btn" onclick="copyNfResults()">COPY RESULTS</button>
+    </div>`;
+
+  window._nfLastStats   = s;
+  window._nfLastSerial  = nfSerial;
+  window._nfLastVerdict = verdict;
+}
+
+function noiseVerdict(rms, isLH) {
+  if (isLH) {
+    if (rms <= 1.0) return { verdict: 'Within expected range',                                                verdictColor: 'var(--cyan)'  };
+    return                 { verdict: 'Higher than expected — check base station occlusion or interference', verdictColor: 'var(--amber)' };
+  }
+  if (rms < 0.5) return { verdict: 'Excellent environment',                         verdictColor: 'var(--green)' };
+  if (rms < 1.5) return { verdict: 'Good',                                           verdictColor: 'var(--cyan)'  };
+  if (rms < 3.0) return { verdict: 'Fair — consider improving features/lighting',    verdictColor: 'var(--amber)' };
+  return               { verdict: 'Poor — sparse features or poor lighting likely',  verdictColor: 'var(--red)'   };
+}
+
+function copyNfResults() {
+  const s       = window._nfLastStats;
+  const serial  = window._nfLastSerial  || '?';
+  const verdict = window._nfLastVerdict || '';
+  if (!s) { showMsg('No results to copy', 'err'); return; }
+  const trk       = trackers.get(serial);
+  const typeLabel = trk?.trackerType === 'lighthouse' ? 'LH' : 'VUT';
+  const lines = [
+    'Noise Floor Measurement',
+    `Tracker: ${serial} (${typeLabel})`,
+    `Duration: ${s.duration.toFixed(0)}s, ${s.n} frames, ${s.hz.toFixed(1)} Hz`,
+    `Std dev:  X=${s.stdX.toFixed(2)}mm  Y=${s.stdY.toFixed(2)}mm  Z=${s.stdZ.toFixed(2)}mm`,
+    `3D RMS:   ${s.rms3d.toFixed(2)}mm`,
+    `Range:    X=${s.rangeX.toFixed(2)}mm  Y=${s.rangeY.toFixed(2)}mm  Z=${s.rangeZ.toFixed(2)}mm`,
+    `Verdict:  ${verdict}`,
+  ];
+  navigator.clipboard.writeText(lines.join('\n')).then(() => showMsg('Copied', 'ok'));
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
