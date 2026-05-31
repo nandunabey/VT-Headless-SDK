@@ -267,7 +267,7 @@ identifiers. Always key on the serial number (top-level dict key).
 ## Tested on
 
 - Windows 11 ✓
-- Python 3.14 ✓
+- Python 3.13 ✓
 - 5x VIVE Ultimate Trackers confirmed simultaneously
 - Firmware: 1.0.999.178
 - Standard tracking mode confirmed (no licence required)
