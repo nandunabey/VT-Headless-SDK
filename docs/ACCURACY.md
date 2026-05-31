@@ -53,7 +53,7 @@ This SDK provides two such procedures:
 - **Lighthouse anchor calibration** — a brief slow-movement calibration
   aligns VUT to the Lighthouse coordinate frame; a fixed Vive Tracker 3.0
   then serves as a continuous reference to correct offset and drift.
-  *(In development.)*
+  
 - **Printed sheet calibration** — corrects the offset against trackers placed
   at known printed positions, for VUT-only setups. *(In development.)*
 
