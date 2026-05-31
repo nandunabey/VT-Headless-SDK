@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIVE Tracker — 3D Point Cloud</title>
+<style>
+  :root {
+    --bg:    #0a0a0a; --panel: #111111; --border: #1e1e1e;
+    --cyan:  #00ffcc; --amber: #ffaa00; --green:  #00e676;
+    --red:   #ff4444; --text:  #cccccc; --muted:  #888888;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background:var(--bg); color:var(--text); font-family:monospace;
+    height:100vh; overflow:hidden; display:flex; flex-direction:column;
+  }
+
+  /* ── Header ── */
+  header {
+    height:46px; flex-shrink:0;
+    background:var(--panel); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; padding:0 18px; gap:12px; z-index:30;
+  }
+  .h-title { font-size:11px; letter-spacing:2px; text-transform:uppercase; white-space:nowrap; }
+  .h-title em { color:var(--cyan); font-style:normal; }
+  .h-sep { flex:1; }
+  .conn-status { display:flex; align-items:center; gap:6px; font-size:10px; white-space:nowrap; }
+  .conn-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .conn-dot.live         { background:var(--green); box-shadow:0 0 5px var(--green); animation:blink 2s infinite; }
+  .conn-dot.reconnecting { background:var(--amber); animation:blink .5s infinite; }
+  .conn-dot.disconnected { background:var(--red); }
+  .conn-dot.waiting      { background:var(--muted); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .h-spacecal {
+    font-size:9px; letter-spacing:1.5px; color:var(--cyan); padding:3px 8px;
+    border:1px solid var(--cyan); border-radius:2px; background:rgba(0,255,204,.07);
+    white-space:nowrap; display:none;
+  }
+  .h-back {
+    font-size:9px; color:var(--text); text-decoration:none; letter-spacing:1px;
+    padding:4px 8px; border:1px solid #3a3a3a; border-radius:2px;
+    opacity:.75; transition:color .2s,border-color .2s,opacity .2s;
+  }
+  .h-back:hover { color:var(--cyan); border-color:var(--cyan); opacity:1; }
+
+  /* ── Viewport ── */
+  #viewport { flex:1; position:relative; overflow:hidden; }
+  #viewport canvas { display:block; }
+
+  /* ── Control panel (floating left) ── */
+  .ctrl-panel {
+    position:absolute; top:12px; left:12px; z-index:20;
+    background:rgba(12,12,12,.93); border:1px solid var(--border); border-radius:3px;
+    padding:12px; display:flex; flex-direction:column; gap:7px;
+    min-width:158px; backdrop-filter:blur(6px);
+  }
+  .ctrl-sep {
+    font-size:8px; letter-spacing:2px; color:var(--muted); text-transform:uppercase;
+    border-top:1px solid var(--border); padding-top:7px; margin-top:1px;
+  }
+  .ctrl-btn {
+    font-size:9px; padding:6px 10px; border-radius:2px; font-family:monospace;
+    letter-spacing:1px; text-transform:uppercase; cursor:pointer; width:100%;
+    border:1px solid #333; background:transparent; color:var(--text);
+    text-align:left; transition:color .15s,border-color .15s,background .15s;
+  }
+  .ctrl-btn:hover         { border-color:#555; color:#fff; }
+  .ctrl-btn.on            { border-color:var(--cyan); color:var(--cyan); background:rgba(0,255,204,.08); }
+  .ctrl-btn.recording     { border-color:var(--red); color:var(--red); background:rgba(255,68,68,.08); animation:pulse .9s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+  .pt-count { font-size:10px; color:var(--text); font-variant-numeric:tabular-nums; }
+  .pt-count em { color:var(--cyan); font-style:normal; }
+
+  /* ── Tracker info panel (floating right) ── */
+  .trk-panel {
+    position:absolute; top:12px; right:12px; z-index:20;
+    background:rgba(12,12,12,.9); border:1px solid var(--border); border-radius:3px;
+    padding:10px 12px; min-width:210px; max-width:280px;
+    backdrop-filter:blur(6px); display:flex; flex-direction:column; gap:5px;
+  }
+  .trk-hdr { font-size:8px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:3px; }
+  .trk-row { display:flex; align-items:center; gap:8px; font-size:9px; }
+  .trk-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .trk-name { letter-spacing:1px; font-weight:bold; min-width:46px; }
+  .trk-xyz  { color:var(--muted); font-variant-numeric:tabular-nums; flex:1; }
+  .badge-trk  { font-size:7px; padding:1px 4px; border-radius:2px; letter-spacing:1px; flex-shrink:0; }
+  .badge-ok   { color:var(--green); border:1px solid var(--green); background:rgba(0,230,118,.1); }
+  .badge-lost { color:var(--red);   border:1px solid var(--red);   background:rgba(255,68,68,.1); }
+
+  /* ── Help hint (floating bottom-right) ── */
+  .help-hint {
+    position:absolute; bottom:12px; right:12px; z-index:20;
+    font-size:9px; color:var(--muted); letter-spacing:1px; line-height:2;
+    text-align:right; pointer-events:none; user-select:none;
+  }
+  .help-hint kbd {
+    background:#1a1a1a; border:1px solid #333; border-radius:2px;
+    padding:0 3px; font-family:monospace; font-size:8px; color:var(--text);
+  }
+
+  /* ── Tracker labels (screen-space) ── */
+  .trk-label {
+    position:absolute; pointer-events:none; font-family:monospace;
+    font-size:10px; letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.9);
+    transform:translateX(-50%); white-space:nowrap; user-select:none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-title">VIVE <em>TRACKER</em> — 3D POINT CLOUD</div>
+  <div class="h-sep"></div>
+  <div class="h-spacecal" id="h-spacecal">SPACE CAL</div>
+  <div class="conn-status">
+    <div class="conn-dot waiting" id="conn-dot"></div>
+    <span id="conn-text" style="color:var(--muted)">WAITING</span>
+    <span style="color:var(--muted);font-size:9px">&nbsp;ws://localhost:8765</span>
+  </div>
+  <a href="http://localhost:8080/visualiser.html" class="h-back">← VISUALISER</a>
+</header>
+
+<div id="viewport">
+
+  <!-- Left control panel -->
+  <div class="ctrl-panel">
+    <div class="ctrl-sep" style="border-top:none;padding-top:0;margin-top:0">Point Cloud</div>
+    <button class="ctrl-btn" id="btn-record" onclick="toggleRecord()">⏺ Record Cloud</button>
+    <button class="ctrl-btn" onclick="clearCloud()">✕ Clear Cloud</button>
+    <button class="ctrl-btn" onclick="exportCloud()">↓ Export .xyz</button>
+    <div class="pt-count">Points: <em id="pt-count">0</em></div>
+
+    <div class="ctrl-sep">Colour Mode</div>
+    <button class="ctrl-btn on" id="btn-col-type"   onclick="setColorMode('type')">By Type</button>
+    <button class="ctrl-btn"   id="btn-col-height"  onclick="setColorMode('height')">By Height</button>
+
+    <div class="ctrl-sep">Display</div>
+    <button class="ctrl-btn on" id="btn-trails" onclick="toggleTrails()">Trails</button>
+    <button class="ctrl-btn on" id="btn-grid"   onclick="toggleGrid()">Grid</button>
+    <button class="ctrl-btn"    onclick="resetCamera()">⊙ Reset Camera</button>
+  </div>
+
+  <!-- Right tracker info panel -->
+  <div class="trk-panel" id="trk-panel">
+    <div class="trk-hdr">Live Trackers</div>
+    <div style="font-size:9px;color:var(--muted)">Waiting…</div>
+  </div>
+
+  <!-- Help hint -->
+  <div class="help-hint">
+    drag rotate &nbsp;·&nbsp; scroll zoom &nbsp;·&nbsp; right-drag pan<br>
+    <kbd>R</kbd> record &nbsp; <kbd>C</kbd> clear &nbsp; <kbd>E</kbd> export
+  </div>
+
+</div><!-- #viewport -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+const WS_URL        = 'ws://localhost:8765';
+const TRAIL_MAX     = 60;
+const MAX_CLOUD_PTS = 200_000;
+
+const VUT_HEX = 0x00ffcc;
+const LH_HEX  = 0xffaa00;
+const VUT_RGB = new THREE.Color(VUT_HEX);
+const LH_RGB  = new THREE.Color(LH_HEX);
+
+// ── App state ─────────────────────────────────────────────────────────────────
+let recording  = false;
+let colorMode  = 'type';    // 'type' | 'height'
+let showTrails = true;
+let showGrid   = true;
+let cloudCount = 0;
+let cloudDirty = false;
+
+let vutSlot = 0, lhSlot = 0;
+const trackerState = new Map();   // serial → {pos, rot, status, type}
+const trackerMesh  = new Map();   // serial → mesh objects
+
+// ── Three.js ──────────────────────────────────────────────────────────────────
+const viewport = document.getElementById('viewport');
+const scene    = new THREE.Scene();
+scene.background = new THREE.Color(0x080808);
+
+const camera = new THREE.PerspectiveCamera(52, 1, 0.01, 500);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+viewport.appendChild(renderer.domElement);
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const sun = new THREE.DirectionalLight(0xffffff, 0.75);
+sun.position.set(4, 10, 6);
+scene.add(sun);
+
+// Grid (XZ plane = floor, Y=0)
+const gridMesh = new THREE.GridHelper(20, 40, 0x1a1a1a, 0x111111);
+scene.add(gridMesh);
+
+// Axes: X=red Y=green Z=blue
+const axesMesh = new THREE.AxesHelper(0.6);
+scene.add(axesMesh);
+
+// ── Pre-allocated point cloud ─────────────────────────────────────────────────
+const cloudPos  = new Float32Array(MAX_CLOUD_PTS * 3);
+const cloudCol  = new Float32Array(MAX_CLOUD_PTS * 3);
+const cloudType = new Uint8Array(MAX_CLOUD_PTS);   // 0=VUT 1=LH — kept for re-colour
+const cloudGeo  = new THREE.BufferGeometry();
+const posAttr   = new THREE.BufferAttribute(cloudPos, 3);
+const colAttr   = new THREE.BufferAttribute(cloudCol, 3);
+posAttr.setUsage(THREE.DynamicDrawUsage);
+colAttr.setUsage(THREE.DynamicDrawUsage);
+cloudGeo.setAttribute('position', posAttr);
+cloudGeo.setAttribute('color',    colAttr);
+cloudGeo.setDrawRange(0, 0);
+const cloudMat  = new THREE.PointsMaterial({ size: 0.022, vertexColors: true, sizeAttenuation: true });
+const cloudPts  = new THREE.Points(cloudGeo, cloudMat);
+scene.add(cloudPts);
+
+// ── Camera orbit ──────────────────────────────────────────────────────────────
+let camTheta = 0.75, camPhi = 1.1, camR = 4.5;
+let camTx = 0, camTy = 0, camTz = 0;
+
+function updateCamera() {
+  const sp = Math.sin(camPhi), cp = Math.cos(camPhi);
+  const st = Math.sin(camTheta), ct = Math.cos(camTheta);
+  camera.position.set(camR * sp * st + camTx, camR * cp + camTy, camR * sp * ct + camTz);
+  camera.lookAt(camTx, camTy, camTz);
+}
+function resetCamera() { camTheta=0.75; camPhi=1.1; camR=4.5; camTx=0; camTy=0; camTz=0; updateCamera(); }
+resetCamera();
+
+let mDown = false, rDown = false, lx = 0, ly = 0;
+const el = renderer.domElement;
+el.addEventListener('contextmenu', e => e.preventDefault());
+el.addEventListener('mousedown', e => {
+  if (e.button === 0) mDown = true;
+  if (e.button === 2) rDown = true;
+  lx = e.clientX; ly = e.clientY;
+});
+window.addEventListener('mouseup', e => { if(e.button===0) mDown=false; if(e.button===2) rDown=false; });
+window.addEventListener('mousemove', e => {
+  const dx = e.clientX - lx, dy = e.clientY - ly;
+  lx = e.clientX; ly = e.clientY;
+  if (mDown) {
+    camTheta -= dx * 0.007;
+    camPhi = Math.max(0.04, Math.min(Math.PI - 0.04, camPhi + dy * 0.007));
+    updateCamera();
+  }
+  if (rDown) {
+    const spd = camR * 0.0013;
+    camTx -= Math.cos(camTheta) * dx * spd;
+    camTz += Math.sin(camTheta) * dx * spd;
+    camTy += dy * spd;
+    updateCamera();
+  }
+});
+el.addEventListener('wheel', e => {
+  camR = Math.max(0.4, Math.min(100, camR * (e.deltaY > 0 ? 1.12 : 0.9)));
+  updateCamera(); e.preventDefault();
+}, { passive: false });
+
+// Touch
+let t0 = null, t1 = null, prevPinch = 0;
+el.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) { t0 = e.touches[0]; mDown = true; lx = t0.clientX; ly = t0.clientY; }
+  if (e.touches.length === 2) { t0 = e.touches[0]; t1 = e.touches[1]; mDown = false; prevPinch = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY); }
+}, { passive: false });
+el.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1 && mDown) {
+    const dx = e.touches[0].clientX - lx, dy = e.touches[0].clientY - ly;
+    lx = e.touches[0].clientX; ly = e.touches[0].clientY;
+    camTheta -= dx * 0.007; camPhi = Math.max(0.04, Math.min(Math.PI-0.04, camPhi+dy*0.007)); updateCamera();
+  }
+  if (e.touches.length === 2) {
+    const d = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+    camR = Math.max(0.4, Math.min(100, camR * prevPinch / d));
+    prevPinch = d; updateCamera();
+  }
+}, { passive: false });
+el.addEventListener('touchend', () => { mDown = false; t0 = t1 = null; });
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+function resize() {
+  const w = viewport.clientWidth, h = viewport.clientHeight;
+  if (!w || !h) return;
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+resize();
+new ResizeObserver(resize).observe(viewport);
+
+// ── Tracker mesh factory ──────────────────────────────────────────────────────
+function detectType(serial) {
+  if (serial.toUpperCase().startsWith('LHR-')) return 'lighthouse';
+  if (serial.startsWith('41-') || serial.startsWith('42-')) return 'vut';
+  return 'vut';
+}
+
+function typeColor(type)  { return type === 'lighthouse' ? LH_RGB  : VUT_RGB; }
+function typeHex(type)    { return type === 'lighthouse' ? LH_HEX  : VUT_HEX; }
+function typeCssCol(type) { return type === 'lighthouse' ? '#ffaa00' : '#00ffcc'; }
+
+function getOrCreate(serial, type) {
+  if (trackerMesh.has(serial)) return trackerMesh.get(serial);
+
+  const slot  = type === 'lighthouse' ? lhSlot++ : vutSlot++;
+  const name  = (type === 'lighthouse' ? 'LH-' : 'VUT-') + String(slot + 1).padStart(2, '0');
+  const hex   = typeHex(type);
+  const cssCol = typeCssCol(type);
+
+  // Sphere
+  const sGeo = new THREE.SphereGeometry(0.045, 16, 8);
+  const sMat = new THREE.MeshPhongMaterial({ color: hex, emissive: hex, emissiveIntensity: 0.22 });
+  const sphere = new THREE.Mesh(sGeo, sMat);
+  scene.add(sphere);
+
+  // Orientation arrow (2-point line)
+  const aGeo = new THREE.BufferGeometry();
+  const aBuf = new Float32Array(6);
+  aGeo.setAttribute('position', new THREE.BufferAttribute(aBuf, 3));
+  const arrow = new THREE.Line(aGeo, new THREE.LineBasicMaterial({ color: hex }));
+  scene.add(arrow);
+
+  // Trail (pre-allocated for TRAIL_MAX points)
+  const tBuf  = new Float32Array(TRAIL_MAX * 3);
+  const tAttr = new THREE.BufferAttribute(tBuf, 3);
+  tAttr.setUsage(THREE.DynamicDrawUsage);
+  const tGeo  = new THREE.BufferGeometry();
+  tGeo.setAttribute('position', tAttr);
+  tGeo.setDrawRange(0, 0);
+  const trail = new THREE.Line(tGeo, new THREE.LineBasicMaterial({ color: hex, transparent: true, opacity: 0.55 }));
+  scene.add(trail);
+
+  // Screen-space label
+  const label = document.createElement('div');
+  label.className = 'trk-label';
+  label.style.color = cssCol;
+  label.textContent = name;
+  viewport.appendChild(label);
+
+  const mesh = { sphere, arrow, aBuf, trail, tGeo, tBuf, tAttr, label, history: [], name, type, cssCol, active: false };
+  trackerMesh.set(serial, mesh);
+  return mesh;
+}
+
+// ── Per-frame tracker update ──────────────────────────────────────────────────
+const _fwd = new THREE.Vector3();
+const _q   = new THREE.Quaternion();
+
+function updateTracker(serial, entry) {
+  const type = entry.tracker_type || detectType(serial);
+  const m    = getOrCreate(serial, type);
+  const px   = entry.position.x, py = entry.position.y, pz = entry.position.z;
+  const rot  = entry.rotation;
+
+  m.active = true;
+  m.sphere.position.set(px, py, pz);
+  m.sphere.visible = true;
+
+  // Orientation arrow: forward = (0,0,-1) rotated by tracker quaternion
+  _q.set(rot.x, rot.y, rot.z, rot.w);
+  _fwd.set(0, 0, -1).applyQuaternion(_q).multiplyScalar(0.18);
+  const ab = m.aBuf;
+  ab[0] = px;          ab[1] = py;          ab[2] = pz;
+  ab[3] = px + _fwd.x; ab[4] = py + _fwd.y; ab[5] = pz + _fwd.z;
+  m.arrow.geometry.attributes.position.needsUpdate = true;
+  m.arrow.visible = true;
+
+  // Trail
+  const h = m.history;
+  h.push(px, py, pz);
+  if (h.length > TRAIL_MAX * 3) h.splice(0, 3);
+  const n = h.length / 3;
+  for (let i = 0; i < h.length; i++) m.tBuf[i] = h[i];
+  m.tAttr.needsUpdate = true;
+  m.tGeo.setDrawRange(0, n);
+  m.trail.visible = showTrails && n >= 2;
+
+  // Cloud point
+  if (recording && cloudCount < MAX_CLOUD_PTS) {
+    const i = cloudCount;
+    cloudPos[i * 3]     = px;
+    cloudPos[i * 3 + 1] = py;
+    cloudPos[i * 3 + 2] = pz;
+    cloudType[i] = type === 'lighthouse' ? 1 : 0;
+    applyColor(i, type, py);
+    cloudCount++;
+    cloudDirty = true;
+  }
+
+  let st = trackerState.get(serial);
+  if (!st) { st = {}; trackerState.set(serial, st); }
+  st.pos = entry.position; st.rot = rot; st.status = 'tracking'; st.type = type; st.name = m.name;
+}
+
+function markLost(serial) {
+  const st = trackerState.get(serial);
+  if (st) st.status = 'lost';
+  const m = trackerMesh.get(serial);
+  if (!m) return;
+  m.active = false;
+  m.sphere.visible = false;
+  m.arrow.visible  = false;
+  m.trail.visible  = false;
+  m.label.style.display = 'none';
+}
+
+// ── Colour helpers ────────────────────────────────────────────────────────────
+const _hcol = new THREE.Color();
+function heightColor(y) {
+  _hcol.setHSL(Math.max(0, Math.min(1, 1 - (y + 2) / 4)) * 0.667, 1, 0.5);
+  return _hcol;
+}
+
+function applyColor(i, type, y) {
+  let c;
+  if (colorMode === 'height') { c = heightColor(y); }
+  else                        { c = typeColor(type); }
+  cloudCol[i * 3]     = c.r;
+  cloudCol[i * 3 + 1] = c.g;
+  cloudCol[i * 3 + 2] = c.b;
+}
+
+// ── Label projection ──────────────────────────────────────────────────────────
+const _proj = new THREE.Vector3();
+function updateLabels() {
+  const w = viewport.clientWidth, h = viewport.clientHeight;
+  for (const [, m] of trackerMesh) {
+    if (!m.sphere.visible) { m.label.style.display = 'none'; continue; }
+    _proj.copy(m.sphere.position).project(camera);
+    if (_proj.z < -1 || _proj.z > 1) { m.label.style.display = 'none'; continue; }
+    m.label.style.left    = (((_proj.x + 1) / 2) * w) + 'px';
+    m.label.style.top     = (((-_proj.y + 1) / 2) * h - 26) + 'px';
+    m.label.style.display = '';
+  }
+}
+
+// ── Tracker info panel ────────────────────────────────────────────────────────
+function rebuildInfoPanel() {
+  const panel = document.getElementById('trk-panel');
+  if (!trackerState.size) {
+    panel.innerHTML = '<div class="trk-hdr">Live Trackers</div><div style="font-size:9px;color:var(--muted)">Waiting…</div>';
+    return;
+  }
+  let html = '<div class="trk-hdr">Live Trackers</div>';
+  for (const [, st] of trackerState) {
+    const col = typeCssCol(st.type);
+    const p   = st.pos;
+    const bdg = st.status === 'tracking' ? 'badge-ok' : 'badge-lost';
+    const lbl = st.status === 'tracking' ? 'TRK' : 'LOST';
+    html += `<div class="trk-row">
+      <div class="trk-dot" style="background:${col};box-shadow:0 0 4px ${col}"></div>
+      <span class="trk-name" style="color:${col}">${st.name}</span>
+      <span class="trk-xyz">${p ? `${p.x.toFixed(2)} ${p.y.toFixed(2)} ${p.z.toFixed(2)}` : '—'}</span>
+      <span class="badge-trk ${bdg}">${lbl}</span>
+    </div>`;
+  }
+  panel.innerHTML = html;
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+let ws = null, wsRetries = 0;
+
+function setConn(s) {
+  const dot = document.getElementById('conn-dot');
+  const txt = document.getElementById('conn-text');
+  dot.className = 'conn-dot ' + s;
+  const M = { live:['LIVE','var(--green)'], reconnecting:['RECONNECTING…','var(--amber)'], disconnected:['DISCONNECTED','var(--muted)'], waiting:['WAITING','var(--muted)'] };
+  const [l, c] = M[s] || M.waiting;
+  txt.textContent = l; txt.style.color = c;
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen  = () => { wsRetries = 0; setConn('live'); };
+  ws.onclose = () => { setConn(wsRetries > 0 ? 'reconnecting' : 'disconnected'); wsRetries++; setTimeout(connect, 2000); };
+  ws.onerror = () => setConn('reconnecting');
+  ws.onmessage = e => {
+    let d; try { d = JSON.parse(e.data); } catch { return; }
+    if (!d.type && d.meta !== undefined) ingestFrame(d);
+  };
+}
+
+function ingestFrame(d) {
+  const active = new Set();
+  for (const [serial, entry] of Object.entries(d)) {
+    if (serial === 'meta' || !entry?.position) continue;
+    active.add(serial);
+    updateTracker(serial, entry);
+  }
+  for (const serial of trackerState.keys()) {
+    if (!active.has(serial)) markLost(serial);
+  }
+
+  // Space cal header chip
+  const meta  = d.meta || {};
+  const scEl  = document.getElementById('h-spacecal');
+  const scMode = meta.space_calibration;
+  if (scMode && scMode !== 'off') {
+    const res = meta.calibration_residual_mm;
+    scEl.textContent = 'SPACE CAL: ' + scMode.toUpperCase() + (res != null ? ' (' + res.toFixed(1) + 'mm)' : '');
+    scEl.style.display = '';
+  } else {
+    scEl.style.display = 'none';
+  }
+
+  rebuildInfoPanel();
+}
+
+// ── Render loop ───────────────────────────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  if (cloudDirty) {
+    posAttr.needsUpdate = true;
+    colAttr.needsUpdate = true;
+    cloudGeo.setDrawRange(0, cloudCount);
+    document.getElementById('pt-count').textContent = cloudCount.toLocaleString();
+    cloudDirty = false;
+  }
+  renderer.render(scene, camera);
+  updateLabels();
+}
+animate();
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function toggleRecord() {
+  recording = !recording;
+  const btn = document.getElementById('btn-record');
+  btn.classList.toggle('recording', recording);
+  btn.textContent = recording ? '⏹ Stop Recording' : '⏺ Record Cloud';
+}
+
+function clearCloud() {
+  cloudCount = 0;
+  cloudGeo.setDrawRange(0, 0);
+  posAttr.needsUpdate = true;
+  document.getElementById('pt-count').textContent = '0';
+}
+
+function exportCloud() {
+  if (cloudCount === 0) return;
+  const lines = new Array(cloudCount);
+  for (let i = 0; i < cloudCount; i++) {
+    lines[i] = `${cloudPos[i*3].toFixed(4)} ${cloudPos[i*3+1].toFixed(4)} ${cloudPos[i*3+2].toFixed(4)}`;
+  }
+  const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+  const a  = document.createElement('a');
+  a.href   = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain' }));
+  a.download = `cloud_${ts}.xyz`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+function setColorMode(mode) {
+  colorMode = mode;
+  document.getElementById('btn-col-type').classList.toggle('on', mode === 'type');
+  document.getElementById('btn-col-height').classList.toggle('on', mode === 'height');
+  // Recolour existing cloud
+  for (let i = 0; i < cloudCount; i++) {
+    const type = cloudType[i] === 1 ? 'lighthouse' : 'vut';
+    applyColor(i, type, cloudPos[i * 3 + 1]);
+  }
+  if (cloudCount > 0) { colAttr.needsUpdate = true; }
+}
+
+function toggleTrails() {
+  showTrails = !showTrails;
+  document.getElementById('btn-trails').classList.toggle('on', showTrails);
+  for (const [, m] of trackerMesh) m.trail.visible = showTrails && (m.history.length / 3) >= 2;
+}
+
+function toggleGrid() {
+  showGrid = !showGrid;
+  gridMesh.visible = showGrid;
+  document.getElementById('btn-grid').classList.toggle('on', showGrid);
+}
+
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  switch (e.key.toLowerCase()) {
+    case 'r': toggleRecord(); break;
+    case 'c': clearCloud();   break;
+    case 'e': exportCloud();  break;
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+connect();
+</script>
+</body>
+</html>
