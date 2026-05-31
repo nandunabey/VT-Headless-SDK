@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VIVE Tracker — 3D Point Cloud</title>
+<title>VIVE Tracker — 3D View</title>
 <style>
   :root {
     --bg:    #0a0a0a; --panel: #111111; --border: #1e1e1e;
@@ -111,7 +111,7 @@
 <body>
 
 <header>
-  <div class="h-title">VIVE <em>TRACKER</em> — 3D POINT CLOUD</div>
+  <div class="h-title">VIVE <em>TRACKER</em> — 3D VIEW</div>
   <div class="h-sep"></div>
   <div class="h-spacecal" id="h-spacecal">SPACE CAL</div>
   <div class="conn-status">
@@ -126,11 +126,11 @@
 
   <!-- Left control panel -->
   <div class="ctrl-panel">
-    <div class="ctrl-sep" style="border-top:none;padding-top:0;margin-top:0">Point Cloud</div>
-    <button class="ctrl-btn" id="btn-record" onclick="toggleRecord()">⏺ Record Cloud</button>
-    <button class="ctrl-btn" onclick="clearCloud()">✕ Clear Cloud</button>
-    <button class="ctrl-btn" onclick="exportCloud()">↓ Export .xyz</button>
-    <div class="pt-count">Points: <em id="pt-count">0</em></div>
+    <div class="ctrl-sep" style="border-top:none;padding-top:0;margin-top:0">Movement Trail</div>
+    <button class="ctrl-btn" id="btn-record" onclick="toggleRecord()">⏺ Record Trail</button>
+    <button class="ctrl-btn" onclick="clearCloud()">✕ Clear Trail</button>
+    <button class="ctrl-btn" onclick="exportCloud()">↓ Export Trail</button>
+    <div class="pt-count">Trail points: <em id="pt-count">0</em></div>
 
     <div class="ctrl-sep">Colour Mode</div>
     <button class="ctrl-btn on" id="btn-col-type"   onclick="setColorMode('type')">By Type</button>
@@ -534,7 +534,7 @@ function toggleRecord() {
   recording = !recording;
   const btn = document.getElementById('btn-record');
   btn.classList.toggle('recording', recording);
-  btn.textContent = recording ? '⏹ Stop Recording' : '⏺ Record Cloud';
+  btn.textContent = recording ? '⏹ Stop Recording' : '⏺ Record Trail';
 }
 
 function clearCloud() {
@@ -553,7 +553,7 @@ function exportCloud() {
   const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
   const a  = document.createElement('a');
   a.href   = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain' }));
-  a.download = `cloud_${ts}.xyz`;
+  a.download = `trail_${ts}.xyz`;
   a.click(); URL.revokeObjectURL(a.href);
 }
 
