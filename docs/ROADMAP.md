@@ -19,14 +19,21 @@
 - ✓ ACCURACY.md — 0.30mm RMS noise floor measured
 - ✓ How-to guides in all tools
 
-## v0.3 — Research Toolkit (next)
+## v0.3.0-alpha — Hybrid Tracking ✓
+- ✓ Space calibration — VUT + Lighthouse alignment (Kabsch transform, spacecal.html)
+- ✓ Anchor drift correction — stationary LH tracker corrects VUT SLAM drift in real time
+- ✓ Noise floor measurement tool (Measurement page → Noise Floor tab)
+- ✓ 3D View — live 3D tracker visualisation with movement trails (view3d.html)
+
+## v0.4 — Research Toolkit (next)
+- Printed sheet calibration (NeuRA method)
+- MessagePack encoding option
+- Monado / Linux support
+- ROS bridge
 - Data quality metrics panel
 - BVH / CSV / C3D / TRC export formats
 - Sync markers (multi-modal studies)
 - Trial protocol manager
 - Accuracy benchmark tool
-- anchor_to_anchor_distance MCP tool
 - vut-skeleton-mcp
 - tools/triggers (spatial event system)
-
-

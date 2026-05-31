@@ -1,6 +1,6 @@
 # **VT Headless SDK ** (Unofficial)
 
-> ⚠️ **Alpha Release — v0.2.1-alpha**
+> ⚠️ **Alpha Release — v0.3.0-alpha**
 > This SDK is in early development. APIs may change
 > between releases. Not recommended for production use.
 > Tested on 5x VIVE Ultimate Trackers (VUT) + 1 x Tracker dongle. 
@@ -179,10 +179,44 @@ after running `START_VT_SDK.bat`:
 | Visualiser | /visualiser.html | Live robotics dashboard |
 | Setup | /setup.html | Tracker role assignment |
 | Recorder | /recorder.html | Record, playback, export CSV |
-| Measurement | /measurement.html | Live distance + angle |
+| Measurement | /measurement.html | Live distance + angle; **Noise Floor** tab |
 | Calibration | /calibration.html | Origin + named anchors |
+| Space Cal | /spacecal.html | VUT + Lighthouse alignment (Kabsch transform) |
+| 3D View | /view3d.html | Live 3D tracker visualisation + movement trails |
 
 
+
+---
+
+## Hybrid Tracking & Calibration
+
+The SDK supports both VIVE Ultimate Tracker (SLAM) and
+Vive Tracker 3.0 (Lighthouse) — and can align them into a
+single coordinate space.
+
+- **Space Calibration** — aligns VUT and Lighthouse into
+  one unified coordinate frame using a Kabsch transform
+  from a slow-movement calibration capture. Open
+  spacecal.html, pair a VUT + LH tracker, move slowly,
+  solve. Run the daemon with --space-cal unify to apply.
+
+- **Anchor Drift Correction** — a fixed Vive Tracker 3.0
+  acts as a stationary reference to continuously correct
+  VUT SLAM drift. Set the anchor in spacecal.html; the
+  daemon corrects all VUT poses against it in real time.
+
+- **Noise Floor Tool** — measure your tracking
+  environment's jitter (Measurement page → Noise Floor)
+  to assess SLAM quality before research data collection.
+
+- **3D View** — live 3D visualisation of all trackers with
+  movement trails (view3d.html). Useful for verifying
+  calibration: VUT and LH point trails overlap when aligned.
+
+See [docs/ACCURACY.md](docs/ACCURACY.md) for accuracy details and the
+independent NeuRA/UNSW validation study.
+
+---
 
 ## WebSocket API
 
@@ -252,7 +286,7 @@ identifiers. Always key on the serial number (top-level dict key).
 - Tracker IDs may reorder on reconnect — use serial numbers for
   consistent assignment
 - SteamVR must be running before starting the SDK stack
-- Mixed mode (VUT + Lighthouse simultaneously) not yet validated
+- Mixed mode (VUT + Lighthouse) requires space calibration for a unified coordinate frame
 
 Position noise floor: 0.30mm 3D RMS (stationary, 64Hz)
 See [docs/ACCURACY.md](docs/ACCURACY.md) for full characterisation.
