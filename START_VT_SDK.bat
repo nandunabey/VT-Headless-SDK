@@ -63,10 +63,21 @@ echo.
 IF NOT EXIST "%~dp0recordings\" mkdir "%~dp0recordings\"
 echo  [OK] recordings\ directory ready
 
+:: ── Space calibration ─────────────────────────────────────────────────────────
+
+set SPACE_CAL=
+IF EXIST "%~dp0space_calibration.json" (
+    set SPACE_CAL=--space-cal unify
+    echo  [OK] Space calibration found -- unify mode enabled
+) ELSE (
+    echo  [--] No space calibration -- running in raw mode
+    echo       Run spacecal.html to align VUT + Lighthouse
+)
+
 :: ── Start daemon (WebSocket :8765 + HTTP :8080) ──────────────────────────────
 
 echo  Starting tracker daemon (ws://localhost:8765 + http://localhost:8080)...
-start "VUT Tracker Daemon" cmd /c "cd /d %~dp0 && python vtrackerd_openvr.py --fps 60"
+start "VUT Tracker Daemon" cmd /c "cd /d %~dp0 && python vtrackerd_openvr.py --fps 60 %SPACE_CAL%"
 
 echo  Waiting for daemon to initialise...
 timeout /t 3 /nobreak >nul
@@ -123,6 +134,9 @@ if %VIVE_HUB_RUNNING%==1 (
 ) else (
     echo  Mode: Base Station ^(Lighthouse / Tracker 3.0^)
     echo        Ensure trackers show solid green in SteamVR
+)
+IF EXIST "%~dp0space_calibration.json" (
+    echo  [OK] Space calibration -- UNIFY mode active
 )
 echo.
 echo  Daemon window:   "VUT Tracker Daemon"
