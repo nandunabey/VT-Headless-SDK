@@ -114,6 +114,7 @@
   <div class="h-title">VIVE <em>TRACKER</em> — 3D VIEW</div>
   <div class="h-sep"></div>
   <div class="h-spacecal" id="h-spacecal">SPACE CAL</div>
+  <div class="h-spacecal" id="h-anchor" style="color:var(--amber);border-color:var(--amber);background:rgba(255,170,0,.07)">ANCHOR</div>
   <div class="conn-status">
     <div class="conn-dot waiting" id="conn-dot"></div>
     <span id="conn-text" style="color:var(--muted)">WAITING</span>
@@ -509,6 +510,19 @@ function ingestFrame(d) {
     scEl.style.display = '';
   } else {
     scEl.style.display = 'none';
+  }
+
+  const ancEl = document.getElementById('h-anchor');
+  if (ancEl) {
+    const ancMode  = meta.anchor_correction;
+    const ancSerial = meta.anchor_serial;
+    const driftMm  = meta.drift_correction_mm;
+    if (ancMode === 'on' && ancSerial) {
+      ancEl.textContent = 'ANCHOR: ' + ancSerial.slice(-8) + (driftMm != null ? ' · drift ' + driftMm.toFixed(1) + 'mm' : '');
+      ancEl.style.display = '';
+    } else {
+      ancEl.style.display = 'none';
+    }
   }
 
   rebuildInfoPanel();

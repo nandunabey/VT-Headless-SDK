@@ -194,6 +194,26 @@
   .existing-cal-box .good { color:var(--green); }
   .existing-cal-box .warn { color:var(--amber); }
 
+  /* ── Anchor section ── */
+  .anchor-section { display:flex; flex-direction:column; gap:8px; }
+  .anchor-instr {
+    font-size:10px; color:var(--muted); line-height:1.75;
+    border:1px solid #282828; border-left:2px solid rgba(255,170,0,.4);
+    border-radius:2px; padding:9px 11px; background:rgba(255,255,255,.01);
+  }
+  .anchor-instr strong { color:var(--amber); }
+  .anchor-prog-track {
+    height:6px; background:#1a1a1a; border-radius:2px; overflow:hidden;
+    border:1px solid var(--border);
+  }
+  .anchor-prog-fill { height:100%; border-radius:2px; background:var(--amber); transition:width .1s; }
+  .anchor-current {
+    font-size:10px; color:var(--muted); line-height:1.75;
+    border:1px solid rgba(0,230,118,.25); border-radius:2px; padding:7px 10px;
+    background:rgba(0,230,118,.04);
+  }
+  .anchor-current .val { color:var(--text); font-variant-numeric:tabular-nums; }
+
   /* ── Status bar ── */
   .statusbar {
     grid-row:3; grid-column:1/-1;
@@ -294,6 +314,51 @@
     <div class="btn-row" id="post-solve" style="display:none">
       <button class="cal-btn accept" onclick="acceptCalibration()">ACCEPT &amp; SAVE</button>
       <button class="cal-btn danger" onclick="redo()">REDO</button>
+    </div>
+
+    <!-- ── Drift anchor ──────────────────────────────────────────────── -->
+    <div id="anchor-section" style="display:none">
+      <hr class="sec-divider">
+      <div class="anchor-section">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span class="field-label" style="margin:0">DRIFT ANCHOR</span>
+          <span style="font-size:8px;color:var(--muted);letter-spacing:1px">LH only</span>
+        </div>
+
+        <div>
+          <label class="field-label">Anchor Lighthouse Tracker</label>
+          <select id="sel-anchor" class="cal-select">
+            <option value="">No LH trackers</option>
+          </select>
+        </div>
+
+        <div class="anchor-instr">
+          The anchor must remain <strong>physically fixed</strong> for the entire
+          session. Mount it solidly — do not move it after setting.
+        </div>
+
+        <!-- Averaging progress (shown while sampling) -->
+        <div id="anchor-progress" style="display:none">
+          <div class="sec-label" style="margin-bottom:5px">AVERAGING POSITION…</div>
+          <div class="anchor-prog-track">
+            <div class="anchor-prog-fill" id="anchor-prog-fill" style="width:0%"></div>
+          </div>
+          <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:3px">
+            <span id="anchor-frames-n">0</span> / 30 frames
+          </div>
+        </div>
+
+        <!-- Current anchor readout -->
+        <div class="anchor-current" id="anchor-current" style="display:none">
+          <div><span style="color:var(--green)">✓</span> Anchor set: <span class="val" id="anchor-cur-serial"></span></div>
+          <div style="font-size:9px;margin-top:2px">Ref pos: <span class="val" id="anchor-cur-pos"></span></div>
+        </div>
+
+        <div class="btn-row">
+          <button class="cal-btn primary" id="btn-set-anchor" onclick="startAnchorSet()">SET ANCHOR</button>
+          <button class="cal-btn danger"  id="btn-clear-anchor" onclick="clearAnchor()">CLEAR</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -473,8 +538,10 @@ function ingestPoses(d) {
 
   document.getElementById('sb-trackers').textContent = activeCount;
   updateDropdowns(liveVut, liveLh);
+  updateAnchorDropdown(liveLh);
 
   if (captureActive) processFrame(d, nowT);
+  if (anchorSetting)  processAnchorFrame(d);
 }
 
 function detectType(serial) {
@@ -896,6 +963,7 @@ async function acceptCalibration() {
     if (resp.status === 'ok') {
       showMsg('Calibration saved. Restart daemon with --space-cal unify to activate.', 'ok');
       document.getElementById('btn-start').style.display = '';
+      showAnchorSection();
       updateStartBtn();
     } else {
       showMsg('Save failed: ' + (resp.message || 'unknown error'), 'err');
@@ -926,6 +994,12 @@ async function loadExistingCal() {
       </div>`;
     const el = document.getElementById('existing-cal-idle');
     el.innerHTML = html; el.style.display = '';
+
+    // Show anchor section whenever a calibration exists
+    showAnchorSection();
+    if (cal.drift_anchor) {
+      showCurrentAnchor(cal.drift_anchor.lh_serial, cal.drift_anchor.reference_position_lh);
+    }
   } catch { }
 }
 
@@ -942,6 +1016,110 @@ function showMsg(msg, cls) {
   const dur = cls === 'ok' ? 4000 : 9000;
   const timer = setTimeout(() => el.remove(), dur);
   close.onclick = () => { clearTimeout(timer); el.remove(); };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DRIFT ANCHOR
+// ══════════════════════════════════════════════════════════════════════════════
+const ANCHOR_FRAMES = 30;
+let anchorSerial   = null;
+let anchorSamples  = [];
+let anchorSetting  = false;
+let _lastAnchorLhList = '';
+
+function updateAnchorDropdown(liveLh) {
+  const key = liveLh.sort().join(',');
+  if (key === _lastAnchorLhList) return;
+  _lastAnchorLhList = key;
+  const sel  = document.getElementById('sel-anchor');
+  if (!sel) return;
+  const prev = anchorSerial;
+  sel.innerHTML = liveLh.length
+    ? liveLh.map(s => `<option value="${esc(s)}"${s===prev?' selected':''}>${esc(s)}</option>`).join('')
+    : '<option value="">No LH trackers</option>';
+  if (!anchorSetting) anchorSerial = sel.value || null;
+}
+
+function startAnchorSet() {
+  anchorSerial = document.getElementById('sel-anchor')?.value || null;
+  if (!anchorSerial) { showMsg('Select a Lighthouse tracker first', 'err'); return; }
+  anchorSamples = [];
+  anchorSetting = true;
+  document.getElementById('anchor-progress').style.display = '';
+  document.getElementById('btn-set-anchor').disabled  = true;
+  document.getElementById('btn-clear-anchor').disabled = true;
+  document.getElementById('anchor-frames-n').textContent = '0';
+  document.getElementById('anchor-prog-fill').style.width = '0%';
+}
+
+function processAnchorFrame(d) {
+  if (!anchorSetting || !anchorSerial) return;
+  const entry = d[anchorSerial];
+  if (!entry?.position) return;
+  anchorSamples.push([entry.position.x, entry.position.y, entry.position.z]);
+  const n = anchorSamples.length;
+  document.getElementById('anchor-frames-n').textContent = n;
+  document.getElementById('anchor-prog-fill').style.width = Math.min(100, n / ANCHOR_FRAMES * 100) + '%';
+  if (n >= ANCHOR_FRAMES) {
+    anchorSetting = false;
+    document.getElementById('anchor-progress').style.display = 'none';
+    document.getElementById('btn-set-anchor').disabled  = false;
+    document.getElementById('btn-clear-anchor').disabled = false;
+    const avg = [0, 0, 0];
+    for (const p of anchorSamples) { avg[0] += p[0]; avg[1] += p[1]; avg[2] += p[2]; }
+    avg[0] /= n; avg[1] /= n; avg[2] /= n;
+    saveAnchor(avg);
+  }
+}
+
+async function saveAnchor(refPos) {
+  try {
+    const r = await fetch(HTTP_BASE + '/spacecal/set-anchor', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        lh_serial:              anchorSerial,
+        reference_position_lh:  refPos,
+        set_at:                 new Date().toISOString(),
+      }),
+    });
+    const resp = await r.json();
+    if (resp.status === 'ok') {
+      showMsg('Anchor set. Daemon is now correcting VUT drift.', 'ok');
+      showCurrentAnchor(anchorSerial, refPos);
+    } else {
+      showMsg('Anchor save failed: ' + (resp.message || ''), 'err');
+    }
+  } catch (err) {
+    showMsg('Anchor save error: ' + err.message, 'err');
+  }
+}
+
+async function clearAnchor() {
+  if (anchorSetting) { anchorSetting = false; document.getElementById('anchor-progress').style.display = 'none'; }
+  try {
+    const r    = await fetch(HTTP_BASE + '/spacecal/clear-anchor', { method: 'POST' });
+    const resp = await r.json();
+    if (resp.status === 'ok') {
+      showMsg('Anchor cleared', 'ok');
+      document.getElementById('anchor-current').style.display = 'none';
+      document.getElementById('btn-set-anchor').disabled  = false;
+      document.getElementById('btn-clear-anchor').disabled = false;
+    }
+  } catch (err) {
+    showMsg('Clear error: ' + err.message, 'err');
+  }
+}
+
+function showCurrentAnchor(serial, pos) {
+  document.getElementById('anchor-cur-serial').textContent = serial;
+  document.getElementById('anchor-cur-pos').textContent =
+    `(${pos[0].toFixed(3)}, ${pos[1].toFixed(3)}, ${pos[2].toFixed(3)}) m`;
+  document.getElementById('anchor-current').style.display = '';
+}
+
+function showAnchorSection() {
+  document.getElementById('anchor-section').style.display = '';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

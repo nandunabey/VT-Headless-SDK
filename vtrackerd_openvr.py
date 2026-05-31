@@ -145,6 +145,32 @@ def _load_spacecal() -> dict | None:
 
 
 # ---------------------------------------------------------------------------
+# Anchor drift correction state
+# ---------------------------------------------------------------------------
+_anchor_active:  bool        = False
+_anchor_serial:  str | None  = None
+_anchor_ref_pos: list | None = None   # [x, y, z] in unified (LH) space
+_anchor_buf:     list        = []     # rolling 10-frame position buffer
+_drift_vec:      list        = [0.0, 0.0, 0.0]   # applied per-frame correction
+
+
+def _apply_anchor_config(cal: dict) -> None:
+    """Activate anchor correction from calibration dict. Only effective in unify mode."""
+    global _anchor_active, _anchor_serial, _anchor_ref_pos, _anchor_buf, _drift_vec
+    anc = cal.get("drift_anchor")
+    if anc and _spacecal_mode == "unify":
+        _anchor_serial  = anc.get("lh_serial")
+        _anchor_ref_pos = anc.get("reference_position_lh")
+        del _anchor_buf[:]       # clear in-place (safe across threads)
+        _drift_vec[0] = _drift_vec[1] = _drift_vec[2] = 0.0
+        _anchor_active  = bool(_anchor_serial and _anchor_ref_pos)
+    else:
+        _anchor_active  = False
+        _anchor_serial  = None
+        _anchor_ref_pos = None
+
+
+# ---------------------------------------------------------------------------
 # HTTP server — static files + /save-roles + /recorder/*
 # ---------------------------------------------------------------------------
 
@@ -200,6 +226,8 @@ class _HttpHandler(SimpleHTTPRequestHandler):
             "/api/scan/watch/start":      self._post_watch_start,
             "/api/scan/watch/stop":       self._post_watch_stop,
             "/spacecal/save":             self._post_spacecal_save,
+            "/spacecal/set-anchor":       self._post_spacecal_set_anchor,
+            "/spacecal/clear-anchor":     self._post_spacecal_clear_anchor,
         }
         handler = routes.get(path)
         if handler is None:
@@ -592,6 +620,47 @@ class _HttpHandler(SimpleHTTPRequestHandler):
         print(f"\n  [map watcher] disarmed")
         self._json_resp({"status": "ok"})
 
+    # ── /spacecal/set-anchor ─────────────────────────────────────────────────
+    def _post_spacecal_set_anchor(self):
+        global _spacecal_config
+        body = self._read_body()
+        try:
+            data = json.loads(body)
+            if "lh_serial" not in data or "reference_position_lh" not in data:
+                raise ValueError("Missing lh_serial or reference_position_lh")
+            if not SPACECAL_FILE.is_file():
+                raise ValueError("No space_calibration.json — run space calibration first")
+            cal = json.loads(SPACECAL_FILE.read_text())
+            cal["drift_anchor"] = {
+                "lh_serial":             data["lh_serial"],
+                "reference_position_lh": data["reference_position_lh"],
+                "set_at":                data.get("set_at", ""),
+            }
+            SPACECAL_FILE.write_text(json.dumps(cal, indent=2))
+            _spacecal_config = cal
+            if _spacecal_mode == "unify":
+                _apply_anchor_config(cal)
+            self._json_resp({"status": "ok"})
+        except Exception as exc:
+            self._json_resp({"status": "error", "message": str(exc)}, 400)
+
+    # ── /spacecal/clear-anchor ────────────────────────────────────────────────
+    def _post_spacecal_clear_anchor(self):
+        global _spacecal_config, _anchor_active, _anchor_serial, _anchor_ref_pos, _drift_vec
+        try:
+            if SPACECAL_FILE.is_file():
+                cal = json.loads(SPACECAL_FILE.read_text())
+                cal.pop("drift_anchor", None)
+                SPACECAL_FILE.write_text(json.dumps(cal, indent=2))
+                _spacecal_config = cal
+            _anchor_active  = False
+            _anchor_serial  = None
+            _anchor_ref_pos = None
+            _drift_vec[0]   = _drift_vec[1] = _drift_vec[2] = 0.0
+            self._json_resp({"status": "ok"})
+        except Exception as exc:
+            self._json_resp({"status": "error", "message": str(exc)}, 400)
+
     # ── /spacecal/current ─────────────────────────────────────────────────────
     def _get_spacecal_current(self):
         if SPACECAL_FILE.is_file():
@@ -852,19 +921,50 @@ async def _main_loop(vr, trackers, broadcast_hz: int):
                     pose["rotation"]["y"] = round(qout[2], 6)
                     pose["rotation"]["z"] = round(qout[3], 6)
 
+            # ── Apply anchor drift correction ─────────────────────────────
+            drift_mm = 0.0
+            if _anchor_active and _anchor_serial and _anchor_ref_pos is not None:
+                anc_pose = serial_poses.get(_anchor_serial)
+                if anc_pose and anc_pose.get("position"):
+                    ap = anc_pose["position"]
+                    a_now = [ap["x"], ap["y"], ap["z"]]
+                    _anchor_buf.append(a_now)
+                    if len(_anchor_buf) > 10:
+                        _anchor_buf.pop(0)
+                    n_buf = len(_anchor_buf)
+                    a_avg = [sum(p[k] for p in _anchor_buf) / n_buf for k in range(3)]
+                    # Outlier rejection: skip if anchor jumped > 50mm (occlusion / blip)
+                    jump_mm = math.sqrt(sum((a_now[k] - a_avg[k])**2 for k in range(3))) * 1000
+                    if jump_mm < 50.0:
+                        for k in range(3):
+                            _drift_vec[k] = _anchor_ref_pos[k] - a_avg[k]
+                # Anchor not in frame → hold last good _drift_vec unchanged
+
+                for serial, pose in serial_poses.items():
+                    if get_tracker_type(serial) == "vut":
+                        p = pose["position"]
+                        p["x"] = round(p["x"] + _drift_vec[0], 4)
+                        p["y"] = round(p["y"] + _drift_vec[1], 4)
+                        p["z"] = round(p["z"] + _drift_vec[2], 4)
+
+                drift_mm = math.sqrt(sum(v * v for v in _drift_vec)) * 1000
+
             cal_residual = None
             if _spacecal_config:
                 cal_residual = (_spacecal_config.get("quality") or {}).get("median_residual_mm")
 
             payload = dict(serial_poses)
             payload["meta"] = {
-                "fps":                   broadcast_hz,
-                "latency_ms":            latency_ms,
-                "tracker_count":         len(serial_poses),
-                "vut_count":             sum(1 for s in serial_poses if get_tracker_type(s) == "vut"),
-                "lighthouse_count":      sum(1 for s in serial_poses if get_tracker_type(s) == "lighthouse"),
-                "space_calibration":     _spacecal_mode,
+                "fps":                     broadcast_hz,
+                "latency_ms":              latency_ms,
+                "tracker_count":           len(serial_poses),
+                "vut_count":               sum(1 for s in serial_poses if get_tracker_type(s) == "vut"),
+                "lighthouse_count":        sum(1 for s in serial_poses if get_tracker_type(s) == "lighthouse"),
+                "space_calibration":       _spacecal_mode,
                 "calibration_residual_mm": cal_residual,
+                "anchor_correction":       "on" if _anchor_active else "off",
+                "anchor_serial":           _anchor_serial if _anchor_active else None,
+                "drift_correction_mm":     round(drift_mm, 2) if _anchor_active else None,
             }
             _latest_msg = json.dumps(payload)
 
@@ -923,6 +1023,10 @@ def main():
         "--space-cal", choices=["off", "unify"], default=None, dest="space_cal",
         help="Space calibration mode: off (default) or unify (apply VUT→LH transform)",
     )
+    parser.add_argument(
+        "--anchor-correct", choices=["on", "off"], default=None, dest="anchor_correct",
+        help="Anchor drift correction (default: on if drift_anchor present and unify active)",
+    )
     args = parser.parse_args()
     latency_ms = round(1000 / args.fps)
 
@@ -969,11 +1073,17 @@ def main():
         _spacecal_mode = "off"   # explicit opt-in required; file present but mode defaults off
     if _spacecal_mode == "unify" and _spacecal_config is not None:
         _spacecal_R_quat = _rot_mat_to_quat(_spacecal_config["rotation"])
+        _apply_anchor_config(_spacecal_config)
+    if args.anchor_correct == "off":
+        global _anchor_active
+        _anchor_active = False
 
     print(f"\n  {len(trackers)} tracker(s) found")
     print(f"  [OK] Broadcast rate  : {args.fps} fps (~{latency_ms}ms latency)")
     cal_status = "unify" if _spacecal_mode == "unify" else ("file present, mode=off" if _spacecal_config else "no file")
     print(f"  [OK] Space cal       : {cal_status}")
+    anc_status = f"on ({_anchor_serial})" if _anchor_active else "off"
+    print(f"  [OK] Anchor correct  : {anc_status}")
 
     _start_http()
     _start_map_watcher()

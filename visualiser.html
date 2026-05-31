@@ -197,6 +197,7 @@
   .badge-tracking { background: rgba(0,230,118,.12); border: 1px solid var(--green); color: var(--green); }
   .badge-lost     { background: rgba(255,82,82,.12);  border: 1px solid var(--red);   color: var(--red); }
   .badge-vut      { background: rgba(0,229,255,.12);  border: 1px solid var(--cyan);  color: var(--cyan); }
+  .badge-anchor   { background: rgba(255,179,0,.15);  border: 1px solid var(--amber); color: var(--amber); }
   .badge-lh       { background: rgba(255,179,0,.12);  border: 1px solid var(--amber); color: var(--amber); }
 
   .tc-serial {
@@ -412,6 +413,7 @@
   <div id="h-view-mode">TOP-DOWN · XZ</div>
   <div class="h-sep"></div>
   <div id="h-spacecal" style="display:none;font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--cyan);padding:3px 8px;border:1px solid var(--cyan);border-radius:2px;background:rgba(0,229,255,.07);white-space:nowrap"></div>
+  <div id="h-anchor" style="display:none;font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--amber);padding:3px 8px;border:1px solid var(--amber);border-radius:2px;background:rgba(255,179,0,.07);white-space:nowrap"></div>
   <div class="h-sep"></div>
   <div class="conn-status">
     <div class="conn-dot waiting" id="conn-dot"></div>
@@ -612,6 +614,7 @@ function buildCard(trk) {
       ${dot}
       <div class="tc-name">${trk.name}</div>
       <div class="tc-badge ${typeBadgeClass}">${typeLabel}</div>
+      <div class="tc-badge badge-anchor" id="anchor-badge-${trk.serial}" style="display:none">ANCHOR</div>
       <div class="tc-badge badge-lost" id="badge-${trk.serial}">LOST</div>
     </div>
     <div class="tc-serial">Serial: ${trk.serial}</div>
@@ -1366,6 +1369,26 @@ function connect() {
         } else {
           scEl.style.display = 'none';
         }
+      }
+
+      // Anchor correction header chip + per-card badge
+      const ancEl    = document.getElementById('h-anchor');
+      const ancMode  = meta?.anchor_correction;
+      const ancSerial = meta?.anchor_serial || null;
+      const driftMm  = meta?.drift_correction_mm;
+      if (ancEl) {
+        if (ancMode === 'on' && ancSerial) {
+          const short = ancSerial.slice(-8);
+          ancEl.textContent = 'ANCHOR: ' + short + (driftMm != null ? ' · drift ' + driftMm.toFixed(1) + 'mm' : '');
+          ancEl.style.display = '';
+        } else {
+          ancEl.style.display = 'none';
+        }
+      }
+      // Update ANCHOR badge on tracker cards
+      for (const [serial] of trackers) {
+        const badge = document.getElementById('anchor-badge-' + serial);
+        if (badge) badge.style.display = (ancSerial && serial === ancSerial) ? '' : 'none';
       }
 
       const lhCount  = meta?.lighthouse_count ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'lighthouse').length;
