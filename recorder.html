@@ -1047,12 +1047,14 @@ async function doExport() {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtTrackerTypes(s) {
-  const lh  = s.lighthouse_count ?? 0;
-  const vut = s.vut_count        ?? 0;
-  if (!lh && !vut) return '';
-  if (lh && vut)   return ` (${lh}× LH · ${vut}× VUT)`;
-  if (lh)          return ' (LH)';
-  return ' (VUT)';
+  const lh   = s.lighthouse_count  ?? 0;
+  const vut  = s.vut_count         ?? 0;
+  const ctrl = s.controller_count  ?? 0;
+  const parts = [];
+  if (lh)   parts.push(lh   + '× LH');
+  if (vut)  parts.push(vut  + '× VUT');
+  if (ctrl) parts.push(ctrl + '× CTRL');
+  return parts.length ? ' (' + parts.join(' · ') + ')' : '';
 }
 
 function fmtDuration(s) {

@@ -164,10 +164,12 @@ const WS_URL        = 'ws://localhost:8765';
 const TRAIL_MAX     = 60;
 const MAX_CLOUD_PTS = 200_000;
 
-const VUT_HEX = 0x00ffcc;
-const LH_HEX  = 0xffaa00;
-const VUT_RGB = new THREE.Color(VUT_HEX);
-const LH_RGB  = new THREE.Color(LH_HEX);
+const VUT_HEX  = 0x00ffcc;
+const LH_HEX   = 0xffaa00;
+const CTRL_HEX = 0x9C27B0;
+const VUT_RGB  = new THREE.Color(VUT_HEX);
+const LH_RGB   = new THREE.Color(LH_HEX);
+const CTRL_RGB = new THREE.Color(CTRL_HEX);
 
 // ── App state ─────────────────────────────────────────────────────────────────
 let recording  = false;
@@ -177,7 +179,7 @@ let showGrid   = true;
 let cloudCount = 0;
 let cloudDirty = false;
 
-let vutSlot = 0, lhSlot = 0;
+let vutSlot = 0, lhSlot = 0, ctrlSlot3d = 0;
 const trackerState = new Map();   // serial → {pos, rot, status, type}
 const trackerMesh  = new Map();   // serial → mesh objects
 
@@ -209,7 +211,7 @@ scene.add(axesMesh);
 // ── Pre-allocated point cloud ─────────────────────────────────────────────────
 const cloudPos  = new Float32Array(MAX_CLOUD_PTS * 3);
 const cloudCol  = new Float32Array(MAX_CLOUD_PTS * 3);
-const cloudType = new Uint8Array(MAX_CLOUD_PTS);   // 0=VUT 1=LH — kept for re-colour
+const cloudType = new Uint8Array(MAX_CLOUD_PTS);   // 0=VUT 1=LH 2=CTRL — kept for re-colour
 const cloudGeo  = new THREE.BufferGeometry();
 const posAttr   = new THREE.BufferAttribute(cloudPos, 3);
 const colAttr   = new THREE.BufferAttribute(cloudCol, 3);
@@ -301,18 +303,18 @@ new ResizeObserver(resize).observe(viewport);
 function detectType(serial) {
   if (serial.toUpperCase().startsWith('LHR-')) return 'lighthouse';
   if (serial.startsWith('41-') || serial.startsWith('42-')) return 'vut';
-  return 'vut';
+  return 'vut'; // controllers identified by tracker_type field
 }
 
-function typeColor(type)  { return type === 'lighthouse' ? LH_RGB  : VUT_RGB; }
-function typeHex(type)    { return type === 'lighthouse' ? LH_HEX  : VUT_HEX; }
-function typeCssCol(type) { return type === 'lighthouse' ? '#ffaa00' : '#00ffcc'; }
+function typeColor(type)  { return type === 'lighthouse' ? LH_RGB  : type === 'controller' ? CTRL_RGB : VUT_RGB; }
+function typeHex(type)    { return type === 'lighthouse' ? LH_HEX  : type === 'controller' ? CTRL_HEX : VUT_HEX; }
+function typeCssCol(type) { return type === 'lighthouse' ? '#ffaa00' : type === 'controller' ? '#9C27B0' : '#00ffcc'; }
 
 function getOrCreate(serial, type) {
   if (trackerMesh.has(serial)) return trackerMesh.get(serial);
 
-  const slot  = type === 'lighthouse' ? lhSlot++ : vutSlot++;
-  const name  = (type === 'lighthouse' ? 'LH-' : 'VUT-') + String(slot + 1).padStart(2, '0');
+  const slot = type === 'lighthouse' ? lhSlot++ : type === 'controller' ? ctrlSlot3d++ : vutSlot++;
+  const name = (type === 'lighthouse' ? 'LH-' : type === 'controller' ? 'CTRL-' : 'VUT-') + String(slot + 1).padStart(2, '0');
   const hex   = typeHex(type);
   const cssCol = typeCssCol(type);
 
@@ -390,7 +392,7 @@ function updateTracker(serial, entry) {
     cloudPos[i * 3]     = px;
     cloudPos[i * 3 + 1] = py;
     cloudPos[i * 3 + 2] = pz;
-    cloudType[i] = type === 'lighthouse' ? 1 : 0;
+    cloudType[i] = type === 'lighthouse' ? 1 : type === 'controller' ? 2 : 0;
     applyColor(i, type, py);
     cloudCount++;
     cloudDirty = true;
@@ -577,7 +579,7 @@ function setColorMode(mode) {
   document.getElementById('btn-col-height').classList.toggle('on', mode === 'height');
   // Recolour existing cloud
   for (let i = 0; i < cloudCount; i++) {
-    const type = cloudType[i] === 1 ? 'lighthouse' : 'vut';
+    const type = cloudType[i] === 1 ? 'lighthouse' : cloudType[i] === 2 ? 'controller' : 'vut';
     applyColor(i, type, cloudPos[i * 3 + 1]);
   }
   if (cloudCount > 0) { colAttr.needsUpdate = true; }

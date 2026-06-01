@@ -154,6 +154,40 @@ _anchor_buf:     list        = []     # rolling 10-frame position buffer
 _drift_vec:      list        = [0.0, 0.0, 0.0]   # applied per-frame correction
 
 
+def _default_buttons() -> dict:
+    return {
+        "trigger":        0.0,
+        "grip":           False,
+        "trackpad_touch": False,
+        "trackpad_x":     0.0,
+        "trackpad_y":     0.0,
+        "trackpad_click": False,
+        "menu":           False,
+    }
+
+
+def _read_controller_buttons(vr, idx: int) -> dict:
+    try:
+        result = vr.getControllerState(idx)
+        state  = result[1] if isinstance(result, tuple) else result
+        if isinstance(result, tuple) and not result[0]:
+            return _default_buttons()
+        pressed = int(state.ulButtonPressed)
+        touched = int(state.ulButtonTouched)
+        axes    = state.rAxis
+        return {
+            "trigger":        round(float(axes[1].x), 3),
+            "grip":           bool((pressed >> 2) & 1),
+            "trackpad_touch": bool((touched >> 32) & 1),
+            "trackpad_x":     round(float(axes[0].x), 3),
+            "trackpad_y":     round(float(axes[0].y), 3),
+            "trackpad_click": bool((pressed >> 32) & 1),
+            "menu":           bool((pressed >> 1) & 1),
+        }
+    except Exception:
+        return _default_buttons()
+
+
 def _apply_anchor_config(cal: dict) -> None:
     """Activate anchor correction from calibration dict. Only effective in unify mode."""
     global _anchor_active, _anchor_serial, _anchor_ref_pos, _anchor_buf, _drift_vec
@@ -861,6 +895,7 @@ async def _main_loop(vr, trackers, broadcast_hz: int):
             idx    = trk["index"]
             serial = trk["serial"]
             model  = trk["model"]
+            ttype  = trk.get("tracker_type", get_tracker_type(serial))
             p      = all_poses[idx]
 
             if p.bPoseIsValid and p.eTrackingResult == openvr.TrackingResult_Running_OK:
@@ -871,7 +906,7 @@ async def _main_loop(vr, trackers, broadcast_hz: int):
                     battery_pct = int(round(batt_raw * 100))
                 except Exception:
                     battery_pct = None
-                serial_poses[serial] = {
+                pose_entry = {
                     "position": {
                         "x": round(pos[0], 4),
                         "y": round(pos[1], 4),
@@ -887,8 +922,11 @@ async def _main_loop(vr, trackers, broadcast_hz: int):
                     "battery_pct":   battery_pct,
                     "session_index": idx,
                     "model":         model,
-                    "tracker_type":  trk.get("tracker_type", get_tracker_type(serial)),
+                    "tracker_type":  ttype,
                 }
+                if ttype == "controller":
+                    pose_entry["buttons"] = _read_controller_buttons(vr, idx)
+                serial_poses[serial] = pose_entry
                 any_valid = True
 
         if any_valid:
@@ -960,6 +998,7 @@ async def _main_loop(vr, trackers, broadcast_hz: int):
                 "tracker_count":           len(serial_poses),
                 "vut_count":               sum(1 for s in serial_poses if get_tracker_type(s) == "vut"),
                 "lighthouse_count":        sum(1 for s in serial_poses if get_tracker_type(s) == "lighthouse"),
+                "controller_count":        sum(1 for p in serial_poses.values() if p.get("tracker_type") == "controller"),
                 "space_calibration":       _spacecal_mode,
                 "calibration_residual_mm": cal_residual,
                 "anchor_correction":       "on" if _anchor_active else "off",
@@ -1062,6 +1101,23 @@ def main():
         openvr.shutdown()
         sys.exit(1)
 
+    # Enumerate controllers (tracked separately from GenericTrackers)
+    ctrl_slot = 0
+    for i in range(openvr.k_unMaxTrackedDeviceCount):
+        if vr.getTrackedDeviceClass(i) == openvr.TrackedDeviceClass_Controller:
+            try:
+                serial = vr.getStringTrackedDeviceProperty(i, openvr.Prop_SerialNumber_String)
+            except Exception:
+                serial = f"controller_{i}"
+            try:
+                model = vr.getStringTrackedDeviceProperty(i, openvr.Prop_ModelNumber_String)
+            except Exception:
+                model = "?"
+            print(f"  Controller [{i}]  serial={serial}  name=CTRL-{ctrl_slot+1:02d}  model={model}")
+            trackers.append({"index": i, "serial": serial, "model": model,
+                             "tracker_type": "controller", "ctrl_slot": ctrl_slot})
+            ctrl_slot += 1
+
     global _trackers, _spacecal_config, _spacecal_mode, _spacecal_R_quat
     _trackers = trackers          # expose to HTTP handlers via module-level ref
 
@@ -1078,7 +1134,12 @@ def main():
         global _anchor_active
         _anchor_active = False
 
-    print(f"\n  {len(trackers)} tracker(s) found")
+    n_trackers    = sum(1 for t in trackers if t["tracker_type"] != "controller")
+    n_controllers = sum(1 for t in trackers if t["tracker_type"] == "controller")
+    summary_parts = [f"{n_trackers} tracker(s)"]
+    if n_controllers:
+        summary_parts.append(f"{n_controllers} controller(s)")
+    print(f"\n  {', '.join(summary_parts)} found")
     print(f"  [OK] Broadcast rate  : {args.fps} fps (~{latency_ms}ms latency)")
     cal_status = "unify" if _spacecal_mode == "unify" else ("file present, mode=off" if _spacecal_config else "no file")
     print(f"  [OK] Space cal       : {cal_status}")

@@ -547,7 +547,7 @@ function ingestPoses(d) {
 function detectType(serial) {
   if (serial.toUpperCase().startsWith('LHR-')) return 'lighthouse';
   if (serial.startsWith('41-') || serial.startsWith('42-')) return 'vut';
-  return 'unknown';
+  return 'unknown'; // controllers use tracker_type field; this fallback is for serials only
 }
 
 // ── Dropdown management ───────────────────────────────────────────────────────

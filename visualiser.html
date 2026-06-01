@@ -199,6 +199,16 @@
   .badge-vut      { background: rgba(0,229,255,.12);  border: 1px solid var(--cyan);  color: var(--cyan); }
   .badge-anchor   { background: rgba(255,179,0,.15);  border: 1px solid var(--amber); color: var(--amber); }
   .badge-lh       { background: rgba(255,179,0,.12);  border: 1px solid var(--amber); color: var(--amber); }
+  .badge-ctrl     { background: rgba(156,39,176,.15); border: 1px solid #9C27B0;      color: #9C27B0; }
+
+  /* Controller button state */
+  .ctrl-btns { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+  .cb-row { display:flex; align-items:center; gap:4px; margin-bottom:3px; font-family:var(--font-mono); font-size:9px; }
+  .cb-label { color:var(--muted); min-width:44px; letter-spacing:.5px; text-transform:uppercase; flex-shrink:0; }
+  .cb-val { color:var(--text); font-variant-numeric:tabular-nums; flex:1; }
+  .cb-ind { color:var(--muted); font-size:8px; min-width:30px; text-align:right; transition:color .1s; }
+  .trg-track { flex:1; height:5px; background:var(--border); border-radius:2px; overflow:hidden; margin:0 4px; }
+  .trg-fill { height:100%; background:#9C27B0; border-radius:2px; transition:width .08s; }
 
   .tc-serial {
     font-family: var(--font-mono);
@@ -492,16 +502,18 @@ const BODY_TRAIL_MAX = 100;
 // ═══════════════════════════════════════════════════════════════════════════════
 // SHARED — tracker registry, math helpers
 // ═══════════════════════════════════════════════════════════════════════════════
-const VUT_COLORS = ['#00e5ff', '#00e676', '#4a9eff', '#ffffff'];
-const LH_COLORS  = ['#ffb300', '#ff8c00', '#ffd700', '#e65100'];
-const TRAIL_MAX  = 200;
-const TRACKER_R  = 12;
-const TICK_LEN   = 20;
+const VUT_COLORS  = ['#00e5ff', '#00e676', '#4a9eff', '#ffffff'];
+const LH_COLORS   = ['#ffb300', '#ff8c00', '#ffd700', '#e65100'];
+const CTRL_COLORS = ['#9C27B0', '#AB47BC', '#7B1FA2', '#CE93D8'];
+const TRAIL_MAX   = 200;
+const TRACKER_R   = 12;
+const TICK_LEN    = 20;
 
 const trackers  = new Map();
 let   slotIndex = 0;
 let   vutSlot   = 0;
 let   lhSlot    = 0;
+let   ctrlSlot  = 0;
 let   trkSlot   = 0;
 
 function getOrCreate(serial, trackerType) {
@@ -512,6 +524,11 @@ function getOrCreate(serial, trackerType) {
     prefix  = 'LH';
     nameNum = lhSlot + 1;
     lhSlot++;
+  } else if (trackerType === 'controller') {
+    color   = CTRL_COLORS[ctrlSlot % CTRL_COLORS.length];
+    prefix  = 'CTRL';
+    nameNum = ctrlSlot + 1;
+    ctrlSlot++;
   } else if (trackerType === 'vut') {
     color   = VUT_COLORS[vutSlot % VUT_COLORS.length];
     prefix  = 'VUT';
@@ -531,6 +548,7 @@ function getOrCreate(serial, trackerType) {
     rot: { w: 1, x: 0, y: 0, z: 0 },
     status: 'waiting',
     batteryPct: null,
+    buttons: null,
     trail: [],
     fps: 0, localFrame: 0,
     fpsCounter: 0, lastFpsStamp: Date.now(),
@@ -589,9 +607,11 @@ function buildCard(trk) {
   el.className = 'tracker-card';
   el.id = 'card-' + trk.serial;
 
-  const dot            = `<div class="tc-dot" style="background:${trk.color};box-shadow:0 0 5px ${trk.color}"></div>`;
-  const typeBadgeClass = trk.trackerType === 'lighthouse' ? 'badge-lh' : 'badge-vut';
-  const typeLabel      = trk.trackerType === 'lighthouse' ? 'LH' : 'VUT';
+  const dot = `<div class="tc-dot" style="background:${trk.color};box-shadow:0 0 5px ${trk.color}"></div>`;
+  let typeBadgeClass, typeLabel;
+  if (trk.trackerType === 'lighthouse')  { typeBadgeClass = 'badge-lh';   typeLabel = 'LH'; }
+  else if (trk.trackerType === 'controller') { typeBadgeClass = 'badge-ctrl'; typeLabel = 'CTRL'; }
+  else                                   { typeBadgeClass = 'badge-vut';  typeLabel = 'VUT'; }
 
   const posRow = ['X','Y','Z'].map(ax => `
     <div class="tc-cell">
@@ -608,6 +628,25 @@ function buildCard(trk) {
   const segs = [0,1,2,3,4].map(i =>
     `<div class="stab-seg" id="seg-${trk.serial}-${i}" style="height:${6+i*3}px"></div>`
   ).join('');
+
+  const ctrlBtnsHtml = trk.trackerType === 'controller' ? `
+    <div class="ctrl-btns" id="ctrlbtns-${trk.serial}">
+      <div class="cb-row">
+        <span class="cb-label">Trigger</span>
+        <div class="trg-track"><div class="trg-fill" id="trg-fill-${trk.serial}" style="width:0%"></div></div>
+        <span class="cb-val" id="trg-val-${trk.serial}">0.00</span>
+      </div>
+      <div class="cb-row">
+        <span class="cb-label">Grip</span><span class="cb-ind" id="grip-${trk.serial}">OFF</span>
+        <span class="cb-label" style="margin-left:6px">Menu</span><span class="cb-ind" id="menu-${trk.serial}">OFF</span>
+      </div>
+      <div class="cb-row">
+        <span class="cb-label">Pad XY</span>
+        <span class="cb-val" id="tp-xy-${trk.serial}">0.00, 0.00</span>
+        <span class="cb-ind" id="tp-t-${trk.serial}">—</span>
+        <span class="cb-ind" id="tp-c-${trk.serial}">—</span>
+      </div>
+    </div>` : '';
 
   el.innerHTML = `
     <div class="tc-header">
@@ -630,7 +669,8 @@ function buildCard(trk) {
         </div>
       </div>
       <div class="stab-bar">${segs}</div>
-    </div>`;
+    </div>
+    ${ctrlBtnsHtml}`;
 
   document.getElementById('tracker-cards').appendChild(el);
 }
@@ -691,6 +731,23 @@ function updateCard(trk) {
       battFillEl.style.width      = (batt !== null && batt !== undefined) ? batt + '%' : '0%';
       battFillEl.style.background = battColor;
     }
+  }
+
+  // Controller button state
+  if (trk.trackerType === 'controller' && trk.buttons) {
+    const b = trk.buttons;
+    const trgFill = document.getElementById('trg-fill-' + trk.serial);
+    if (trgFill) trgFill.style.width = Math.round(b.trigger * 100) + '%';
+    set('trg-val-' + trk.serial, b.trigger.toFixed(2));
+    const gripEl = document.getElementById('grip-' + trk.serial);
+    if (gripEl) { gripEl.textContent = b.grip ? 'ON' : 'OFF'; gripEl.style.color = b.grip ? 'var(--green)' : 'var(--muted)'; }
+    const menuEl = document.getElementById('menu-' + trk.serial);
+    if (menuEl) { menuEl.textContent = b.menu ? 'ON' : 'OFF'; menuEl.style.color = b.menu ? 'var(--green)' : 'var(--muted)'; }
+    set('tp-xy-' + trk.serial, b.trackpad_x.toFixed(2) + ', ' + b.trackpad_y.toFixed(2));
+    const tptEl = document.getElementById('tp-t-' + trk.serial);
+    if (tptEl) { tptEl.textContent = b.trackpad_touch ? 'TOUCH' : '—'; tptEl.style.color = b.trackpad_touch ? 'var(--amber)' : 'var(--muted)'; }
+    const tpcEl = document.getElementById('tp-c-' + trk.serial);
+    if (tpcEl) { tpcEl.textContent = b.trackpad_click ? 'CLICK' : '—'; tpcEl.style.color = b.trackpad_click ? '#9C27B0' : 'var(--muted)'; }
   }
 }
 
@@ -1341,6 +1398,7 @@ function connect() {
         trk.pos    = { x: entry.position.x, y: entry.position.y, z: entry.position.z };
         trk.rot    = { w: entry.rotation.w, x: entry.rotation.x, y: entry.rotation.y, z: entry.rotation.z };
         trk.batteryPct = (entry.battery_pct !== undefined) ? entry.battery_pct : null;
+        if (entry.buttons) trk.buttons = entry.buttons;
         trk.trail.push({ x: trk.pos.x, y: trk.pos.y, z: trk.pos.z });
         if (trk.trail.length > TRAIL_MAX) trk.trail.shift();
         activeCount++;
@@ -1391,20 +1449,18 @@ function connect() {
         if (badge) badge.style.display = (ancSerial && serial === ancSerial) ? '' : 'none';
       }
 
-      const lhCount  = meta?.lighthouse_count ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'lighthouse').length;
-      const vutCount = meta?.vut_count        ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'vut').length;
-      let typeStr = '';
-      if (lhCount && vutCount) typeStr = ` (${lhCount}× LH · ${vutCount}× VUT)`;
-      else if (lhCount)        typeStr = ` (${lhCount}× LH)`;
-      else if (vutCount)       typeStr = ` (${vutCount}× VUT)`;
+      const lhCount   = meta?.lighthouse_count ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'lighthouse').length;
+      const vutCount  = meta?.vut_count        ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'vut').length;
+      const ctrlCount = meta?.controller_count ?? [...trackers.values()].filter(t => t.status === 'tracking' && t.trackerType === 'controller').length;
+      const typeParts = [];
+      if (lhCount)   typeParts.push(lhCount   + '× LH');
+      if (vutCount)  typeParts.push(vutCount  + '× VUT');
+      if (ctrlCount) typeParts.push(ctrlCount + '× CTRL');
+      const typeStr = typeParts.length ? ' (' + typeParts.join(' · ') + ')' : '';
       set('gs-active', activeCount + ' tracker' + (activeCount !== 1 ? 's' : '') + typeStr);
 
-      let typeSummary = '';
-      if (lhCount && vutCount) typeSummary = `${lhCount}× LH  ${vutCount}× VUT`;
-      else if (lhCount)        typeSummary = `${lhCount}× LH`;
-      else if (vutCount)       typeSummary = `${vutCount}× VUT`;
       const summaryEl = document.getElementById('conn-type-summary');
-      if (summaryEl) summaryEl.textContent = typeSummary;
+      if (summaryEl) summaryEl.textContent = typeParts.join('  ');
 
       if (firstPose && activeCount > 0) { fitView(); firstPose = false; }
     }

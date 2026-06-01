@@ -97,10 +97,11 @@
     font-size: 8px; padding: 1px 5px; border-radius: 2px;
     letter-spacing: 1px; text-transform: uppercase;
   }
-  .badge-tracking { background: rgba(0,230,118,.1); border: 1px solid var(--green); color: var(--green); }
+  .badge-tracking { background: rgba(0,230,118,.1);  border: 1px solid var(--green); color: var(--green); }
   .badge-lost     { background: rgba(255,68,68,.1);  border: 1px solid var(--red);  color: var(--red); }
   .badge-vut      { background: rgba(0,255,204,.1);  border: 1px solid var(--cyan);  color: var(--cyan); }
   .badge-lh       { background: rgba(255,170,0,.1);  border: 1px solid var(--amber); color: var(--amber); }
+  .badge-ctrl     { background: rgba(156,39,176,.12); border: 1px solid #9C27B0;     color: #9C27B0; }
   .sel-chip {
     font-size: 9px; background: var(--cyan); color: #000;
     border-radius: 50%; width: 16px; height: 16px;
@@ -381,6 +382,7 @@ const SLOT_COLORS = ['#00ffcc', '#ffaa00', '#ff4444', '#4a9eff'];
 // ── State ─────────────────────────────────────────────────────────────────────
 const trackers = new Map(); // serial → tracker obj
 let slotIndex  = 0;
+let vutSlotM = 0, lhSlotM = 0, ctrlSlotM = 0;
 let roles      = {};
 
 let selected   = [];   // ordered array of serials, max 3
@@ -467,12 +469,17 @@ function ingestPoses(d) {
 
     let trk = trackers.get(serial);
     if (!trk) {
-      const slot = slotIndex++;
+      const slot        = slotIndex++;
+      const trackerType = entry.tracker_type || detectTrackerType(serial);
+      let name;
+      if (trackerType === 'lighthouse')  name = 'LH-'   + String(++lhSlotM).padStart(2, '0');
+      else if (trackerType === 'controller') name = 'CTRL-' + String(++ctrlSlotM).padStart(2, '0');
+      else                               name = 'VUT-'  + String(++vutSlotM).padStart(2, '0');
       trk = {
         serial, slot,
         color:       SLOT_COLORS[slot % SLOT_COLORS.length],
-        name:        'VUT-' + String(slot + 1).padStart(2, '0'),
-        trackerType: entry.tracker_type || detectTrackerType(serial),
+        name,
+        trackerType,
         pos:         { x: 0, y: 0, z: 0 },
         status:      'tracking',
         posBuffer:   [],
@@ -540,10 +547,12 @@ function buildTrackerList() {
 
   for (const [serial, trk] of trackers) {
     const role           = getRole(serial);
-    const isSel          = !!selMap[serial];
-    const isLost         = trk.status === 'lost';
-    const typeBadgeClass = trk.trackerType === 'lighthouse' ? 'badge-lh' : 'badge-vut';
-    const typeLabel      = trk.trackerType === 'lighthouse' ? 'LH' : 'VUT';
+    const isSel  = !!selMap[serial];
+    const isLost = trk.status === 'lost';
+    let typeBadgeClass, typeLabel;
+    if (trk.trackerType === 'lighthouse')  { typeBadgeClass = 'badge-lh';   typeLabel = 'LH'; }
+    else if (trk.trackerType === 'controller') { typeBadgeClass = 'badge-ctrl'; typeLabel = 'CTRL'; }
+    else                                   { typeBadgeClass = 'badge-vut';  typeLabel = 'VUT'; }
     const { x, y, z } = trk.pos;
     const el = document.createElement('div');
     el.className = 'trk-card' + (isSel ? ' selected' : '') + (isLost ? ' lost' : '');
@@ -935,7 +944,7 @@ function updateNfDropdown() {
   const alive = Array.from(trackers.entries()).filter(([, t]) => t.status === 'tracking');
   if (alive.length) {
     sel.innerHTML = alive.map(([s, t]) => {
-      const lbl = t.trackerType === 'lighthouse' ? 'LH' : 'VUT';
+      const lbl = t.trackerType === 'lighthouse' ? 'LH' : t.trackerType === 'controller' ? 'CTRL' : 'VUT';
       return `<option value="${esc(s)}"${s === prev ? ' selected' : ''}>${esc(t.name)} — ${esc(s)} (${lbl})</option>`;
     }).join('');
   } else {
@@ -1099,7 +1108,7 @@ function copyNfResults() {
   const verdict = window._nfLastVerdict || '';
   if (!s) { showMsg('No results to copy', 'err'); return; }
   const trk       = trackers.get(serial);
-  const typeLabel = trk?.trackerType === 'lighthouse' ? 'LH' : 'VUT';
+  const typeLabel = trk?.trackerType === 'lighthouse' ? 'LH' : trk?.trackerType === 'controller' ? 'CTRL' : 'VUT';
   const lines = [
     'Noise Floor Measurement',
     `Tracker: ${serial} (${typeLabel})`,

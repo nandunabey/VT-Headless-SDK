@@ -85,10 +85,11 @@
     text-transform: uppercase;
     flex-shrink: 0;
   }
-  .badge-tracking { background: rgba(0,230,118,.1); border: 1px solid #00e676; color: #00e676; }
+  .badge-tracking { background: rgba(0,230,118,.1);  border: 1px solid #00e676; color: #00e676; }
   .badge-lost     { background: rgba(255,170,0,.1);  border: 1px solid #ffaa00; color: #ffaa00; }
   .badge-vut      { background: rgba(0,229,255,.1);  border: 1px solid #00e5ff; color: #00e5ff; }
   .badge-lh       { background: rgba(255,179,0,.1);  border: 1px solid #ffb300; color: #ffb300; }
+  .badge-ctrl     { background: rgba(156,39,176,.12); border: 1px solid #9C27B0; color: #9C27B0; }
 
   .trk-meta {
     display: flex;
@@ -289,6 +290,8 @@
 <script>
 const SLOT_COLORS = ['#00e5ff', '#ffb300', '#00e676', '#ff5252'];
 
+let vutSlotSU = 0, lhSlotSU = 0, ctrlSlotSU = 0;
+
 const ROLES = [
   '',
   'head', 'neck', 'chest', 'waist',
@@ -324,9 +327,12 @@ function getOrCreate(serial, entry) {
   if (trackerMap.has(serial)) return trackerMap.get(serial);
   const slot        = slotIndex++;
   const color       = SLOT_COLORS[slot % SLOT_COLORS.length];
-  const name        = 'VUT-' + String(slot + 1).padStart(2, '0');
   const trackerType = (entry && entry.tracker_type) ? entry.tracker_type : detectTrackerType(serial);
-  const state       = { serial, slot, color, name, trackerType, status: 'waiting', batteryPct: null };
+  let name;
+  if (trackerType === 'lighthouse')  name = 'LH-'   + String(++lhSlotSU).padStart(2, '0');
+  else if (trackerType === 'controller') name = 'CTRL-' + String(++ctrlSlotSU).padStart(2, '0');
+  else                               name = 'VUT-'  + String(++vutSlotSU).padStart(2, '0');
+  const state = { serial, slot, color, name, trackerType, status: 'waiting', batteryPct: null };
   trackerMap.set(serial, state);
   buildCard(state, entry);
   return state;
@@ -352,9 +358,11 @@ function updateSetupIntro() {
 
 function buildCard(state, entry) {
   document.getElementById('waiting').style.display = 'none';
-  const model          = (entry && entry.model) ? entry.model : '';
-  const typeBadgeClass = state.trackerType === 'lighthouse' ? 'badge-lh' : 'badge-vut';
-  const typeLabel      = state.trackerType === 'lighthouse' ? 'LH' : 'VUT';
+  const model = (entry && entry.model) ? entry.model : '';
+  let typeBadgeClass, typeLabel;
+  if (state.trackerType === 'lighthouse')  { typeBadgeClass = 'badge-lh';   typeLabel = 'LH'; }
+  else if (state.trackerType === 'controller') { typeBadgeClass = 'badge-ctrl'; typeLabel = 'CTRL'; }
+  else                                     { typeBadgeClass = 'badge-vut';  typeLabel = 'VUT'; }
   const div   = document.createElement('div');
   div.className = 'trk-card lost';
   div.id = 'trk-card-' + state.serial;
