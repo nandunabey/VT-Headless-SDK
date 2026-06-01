@@ -278,6 +278,14 @@ identifiers. Always key on the serial number (top-level dict key).
 
 ---
 
+## Troubleshooting
+
+### "Please plug in your VR headset"
+SteamVR needs headless configuration (null driver enabled,
+requireHmd false). See [docs/SETUP_VUT.md](docs/SETUP_VUT.md) → Headless Mode
+Setup. SteamVR updates can reset this; disable SteamVR
+auto-update to prevent recurrence.
+
 ## Limitations
 
 - Unofficial: not affiliated with or supported by HTC VIVE or Valve
