@@ -114,7 +114,9 @@ available.
 
 ---
 
-## Hybrid Space Calibration ******Hybrid Tracking & Calibration needs to be tested and verfied further****** 
+## Hybrid Space Calibration ******Hybrid Tracking & Calibration 
+
+**Further verification needed**
 
 The SDK aligns VUT and Lighthouse into one coordinate space using a Kabsch
 transform from a slow-movement capture. Measured residual: ~3mm (slow
