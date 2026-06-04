@@ -187,10 +187,11 @@ after running `START_VT_SDK.bat`:
 
 
 ---
+***** Further validation needed *****
 
 ## Hybrid Tracking & Calibration
 
-******Hybrid Tracking & Calibration needs to be tested and verfied further****** 
+******Hybrid Tracking & Calibration *****
 
 The SDK supports both VIVE Ultimate Tracker (SLAM) and
 Vive Tracker 3.0 (Lighthouse) — and can align them into a
