@@ -142,5 +142,5 @@ with the Vicon Motion Capture System at Slow, Moderate and Fast Gait Speeds.
 Research Square. https://doi.org/10.21203/rs.3.rs-6989733/v1
 
 And reference this SDK:
-Abeynayake, N. (2026). VT Headless SDK. GitHub.
+NA (2026). VT Headless SDK. GitHub.
 https://github.com/nandunabey/VT-Headless-SDK
