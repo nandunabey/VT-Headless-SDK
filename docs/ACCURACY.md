@@ -50,7 +50,9 @@ need for practical procedures to correct this offset in applied settings.
 
 This SDK provides two such procedures: 
 
-***!!Hybrid Tracking & Calibration needs to be tested and verfied further!!**
+Hybrid Tracking & Calibration 
+
+**Further verification needed**
 
 - **Lighthouse anchor calibration** — a brief slow-movement calibration
   aligns VUT to the Lighthouse coordinate frame; a fixed Vive Tracker 3.0
