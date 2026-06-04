@@ -48,7 +48,9 @@ calibration, which the authors corrected using a Kabsch/SVD alignment to their
 Vicon reference (see the paper, Figure 3 and Section 2.4). They highlight the
 need for practical procedures to correct this offset in applied settings.
 
-This SDK provides two such procedures: ******Hybrid Tracking & Calibration needs to be tested and verfied further****** 
+This SDK provides two such procedures: 
+
+***!!Hybrid Tracking & Calibration needs to be tested and verfied further!!**
 
 - **Lighthouse anchor calibration** — a brief slow-movement calibration
   aligns VUT to the Lighthouse coordinate frame; a fixed Vive Tracker 3.0
