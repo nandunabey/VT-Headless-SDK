@@ -190,11 +190,13 @@ after running `START_VT_SDK.bat`:
 
 ## Hybrid Tracking & Calibration
 
+******Hybrid Tracking & Calibration needs to be tested and verfied further****** 
+
 The SDK supports both VIVE Ultimate Tracker (SLAM) and
 Vive Tracker 3.0 (Lighthouse) — and can align them into a
 single coordinate space.
 
-- **Space Calibration** — aligns VUT and Lighthouse into
+- **Space Calibration** — aligns VUT and Lighthouse into 
   one unified coordinate frame using a Kabsch transform
   from a slow-movement calibration capture. Open
   spacecal.html, pair a VUT + LH tracker, move slowly,
