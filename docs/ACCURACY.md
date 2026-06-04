@@ -122,8 +122,7 @@ available.
 
 The SDK aligns VUT and Lighthouse into one coordinate space using a Kabsch
 transform from a slow-movement capture. Measured residual: ~3mm (slow
-capture) to 5-15mm (typical hand-held). The limit is VUT's own SLAM noise, not
-the algorithm — slow movement during calibration is essential.
+capture) to 5-15mm (typical hand-held).  — slow movement during calibration is essential.
 
 Inspired by the community OpenVR Space Calibrator project, but operates at the
 SDK level with no SteamVR driver modification.
