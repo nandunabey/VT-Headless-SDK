@@ -227,9 +227,9 @@ Broadcast rate is set with `--fps` (default 30, start script uses 60):
 
 | `--fps` | Interval | Latency estimate | Use case |
 |---------|----------|-----------------|----------|
-| 30      | ~33 ms   | ~33 ms          | Body tracking, low CPU |
-| 60      | ~17 ms   | ~17 ms          | Robotics (recommended) |
-| 100     | ~10 ms   | ~10 ms          | Minimum latency, higher CPU |
+| 30      | ~33 ms   | ~33 ms          |  |
+| 60      | ~17 ms   | ~17 ms          |  |
+| 100     | ~10 ms   | ~10 ms          |  |
 
 Each broadcast is a flat JSON dict keyed by hardware serial number
 (stable across SteamVR restarts), plus a `meta` block:
