@@ -355,8 +355,8 @@ claude mcp add vut-mcp node "C:/path/to/vut-toolkit/mcp/vut-mcp/index.js"
 
 ## Author
 
-Nandun Abeynayake
-github.com/nandunabey
+NA
+
 
 ---
 
